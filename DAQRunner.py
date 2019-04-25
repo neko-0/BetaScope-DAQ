@@ -1,8 +1,8 @@
 from BetaDAQ import *
-from general import *
+from general.general import *
 import subprocess
 
-editor = GetEditor("vim")
+editor = GetEditor("gedit")
 
 if __name__ == "__main__":
     print(" \n BetaScope DAQ is created \n")

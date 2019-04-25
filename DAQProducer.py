@@ -4,7 +4,7 @@ Scope and Power supply producer
 
 #from DAQConfigReader import *
 from Lecroy import *
-from CAEN_PS import *
+from caen_ps.CAEN_PS import *
 
 class ScopeProducer:
     def __init__(self, configFile ):
@@ -74,8 +74,8 @@ class PowerSupplyProducer:
             self.ConfirmVoltage = Produce_ConfirmVoltage()
 
             def Produce_SetVoltage():
-                def SetVoltage( PS_Channel, TargetVoltage ):
-                    self.PowerSupply.set_voltage( PS_Channel, TargetVoltage )
+                def SetVoltage( PS_Channel, TargetVoltage, maxI=1.2 ):
+                    self.PowerSupply.set_voltage( PS_Channel, TargetVoltage, maxI )
                 return SetVoltage
             self.SetVoltage = Produce_SetVoltage()
 

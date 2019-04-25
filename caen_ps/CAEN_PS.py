@@ -1,17 +1,36 @@
-import visa
+import pyvisa as visa
 import time
 import sys
 import signal
 import os
 
-from Color_Printing import ColorFormat
-import general
+from general.Color_Printing import ColorFormat
+import general.general as general
 
 xx="02"
 
 class SimpleCaenPowerSupply(object):
 
     def __init__(self):
+
+        self.status_bit = {
+        "00000":"on",
+        "00001":"RUP",
+        "00002":"RDW",
+        "00003":"OVC",
+        "00004":"OVV",
+        "00005":"UNV",
+        "00006":"MAXV",
+        "00007":"TRIP",
+        "00008":"OVP",
+        "00009":"OVT",
+        "00010":"DIS",
+        "00011":"KILL",
+        "00012":"ILK",
+        "00013":"NOCAL",
+        "00141":"TRIP"
+        }
+
         global xx
         rm = visa.ResourceManager("@py")
         resources = rm.list_resources()
@@ -76,7 +95,7 @@ class SimpleCaenPowerSupply(object):
             VMON = self.simple_query("VMON", channel)
             print("Voltage : {}".format(VMON))
 
-    def set_voltage(self, channel, value):
+    def set_voltage(self, channel, value, currentMax=1.2):
         print("\n")
         print("Set channel {} voltage to {}".format(channel, value))
         #self.simple_set(channel, "VSET", value)
@@ -84,27 +103,57 @@ class SimpleCaenPowerSupply(object):
         self.simple_set(channel, "VSET", value)
         print("VMON: {}".format(VMON))
         #print(self.simple_query("VMON", channel))
+        timeout_counter = 5000
+        counter = 0
+        current_limit = float(self.simple_query("ISET", channel))
+        current_incre_step = 2.0
         while abs(float(VMON)- value)>1.0:
            #time.sleep(5)
             self.progress("Ramping voltage... {}".format(VMON.split()[0]), "Set Voltage:{}".format(value))
             VMON = self.simple_query("VMON", channel)
             #time.sleep(3)
+            status = self.read_channel_status_bit(channel)
+            if "TRIP" in self.status_bit[status]:
+                current_limit += current_incre_step
+                if current_limit < currentMax:
+                    pass
+                else:
+                    current_limit = currentMax
+                ColorFormat.printColor("Tripped! increasing current limit to %s"%current_limit)
+                #self.set_channel_status_bit(channel, "00001")
+                time.sleep(30)
+                self.channel_switch(channel, "ON")
+                self.simple_set(channel, "ISET", current_limit)
+                ColorFormat.printColor("Restart rampnig")
+            if( counter == timeout_counter ):
+                print("Timeout: Maximum counter reached {}".format(timeout_counter))
+                break
         print("Finished, the voltage now is {}".format(self.simple_query("VMON", channel)))
         print("\n")
 
-    def set_voltage_Q(self, channel, value):
+    def set_voltage_Q(self, channel, value, currentMax=1.2):
         VMON = self.simple_query("VMON", channel)
         self.simple_set(channel, "VSET", value)
         timeout_counter = 5000
         counter = 0
+        current_limit = float(self.simple_query("IMAX", channel))
+        current_incre_step = 1.0
         while abs(float(VMON)- value)>1.0:
             VMON = self.simple_query("VMON", channel)
             counter += 1
+            status = self.read_channel_status_bit(channel)
+            if "TRIP" in self.status_bit[status]:
+                current_limit += current_incre_step
+                if current_limit < currentMax:
+                    pass
+                else:
+                    current_limit = currentMax
+                ColorFormat.printColor("Tripped! increasing current limit to %s"%current_limit)
+                self.set_channel_status_bit(channel, 1)
+
             if( counter == timeout_counter ):
                 print("Timeout: Maximum counter reached {}".format(timeout_counter))
                 break
-
-
 
     def voltage_monitor(self, channel, delay):
         local_VMON = 999
@@ -131,6 +180,14 @@ class SimpleCaenPowerSupply(object):
             return True
         else:
             return False
+
+    def read_channel_status_bit(self, channel ):
+        stat = self.simple_query( "STAT", channel )
+        stat = stat.split("\r")[0]
+        return str(stat)
+
+    def set_channel_status_bit(self, channel, value):
+        self.simple_set(channel, "STAT", value)
 
     def reset_channel(self, channel):
         print("\n")
