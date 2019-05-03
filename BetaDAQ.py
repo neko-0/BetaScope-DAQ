@@ -40,6 +40,8 @@ class BetaDAQ:
         shutil.copy("Sr_Run_" + str(self.configFile.RunNumber) + "_Description.ini",  "/media/mnt/BigHD/DAQlog/")
 
         tenney_chamber = self.configFile.tenney_chamber
+        tenney_chamber_mode1 = self.configFile.tenney_chamber_mode1
+
         f4t = ""
         temperature_list = [0]
         trigger_voltage_list = [0]
@@ -47,7 +49,10 @@ class BetaDAQ:
             f4t = f4t_controller.F4T_Controller()
             temperature_list = self.configFile.temperature_list
             trigger_voltage_list = self.configFile.trigger_voltage_list_from_chamber
-
+        elif tenney_chamber_mode1[0]:
+            f4t = f4t_controller.F4T_Controller()
+        else:
+            pass
         #if self.configFile.show_chamber_status:
             #proc = mp.Process(target=f4t.log_temp_humi_to_file())
             #proc.start()
@@ -65,6 +70,11 @@ class BetaDAQ:
                     if duration%10==0:
                         #time_sender("Chamber is waiting: ", "% (/%)"%(duration, self.configFile.tenney_chamber_wait_time))
                         print(duration)
+            elif tenney_chamber_mode1[0]:
+                f4t.set_temperature( tenney_chamber_mode1[1] )
+                f4t.check_temperature( tenney_chamber_mode1[1] )
+            else:
+                pass
 
             Scope = ScopeProducer( self.configFile )
             PowerSupply = PowerSupplyProducer( self.configFile )
@@ -92,10 +102,15 @@ class BetaDAQ:
                 V_Check = PowerSupply.ConfirmVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i] )
                 if V_Check:
                     dataFileName = self.configFile.FileNameList[i]+".root"
-                    if tenney_chamber: dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(temperature_list[tempIndex])
+                    if tenney_chamber:
+                        dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(temperature_list[tempIndex])
+                    elif tenney_chamber_mode1[0]:
+                        dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(tenney_chamber_mode1[1])
+                    else:
+                        pass
                     outROOTFile = ROOTFileOutput(dataFileName, self.configFile.EnableChannelList )
 
-                    if tenney_chamber:
+                    if tenney_chamber or tenney_chamber_mode1[0]:
                         outROOTFile.create_branch("temperature", "D")
                         outROOTFile.create_branch("humidity", "D")
                         print("additional_branch created")
@@ -109,7 +124,7 @@ class BetaDAQ:
                     while event < self.configFile.NumEvent:
                         event += 1
 
-                        if tenney_chamber:
+                        if tenney_chamber or tenney_chamber_mode1[0] :
                             outROOTFile.additional_branch["temperature"][0] = f4t.get_temperature()
                             outROOTFile.additional_branch["humidity"][0] = f4t.get_humidity()
 

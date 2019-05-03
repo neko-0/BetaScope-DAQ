@@ -103,7 +103,10 @@ class DAQConfig:
             self.ThresholdScan_FileNameList.append( str("Sr_Run"+str(self.RunNumber)+"_"+str(volt)+"V_Ch"+str(self.ThresholdScan_ScopeChannel)))
         ColorFormat.printColor(self.ThresholdScan_FileNameList, "y")
 
-        self.tenney_chamber = bool(configFile["Tenney_Chamber"]["USE_CHAMBER"])
+        self.tenney_chamber = bool(configFile["Tenney_Chamber"]["USE_CHAMBER"]=="True")
+        self.tenney_chamber_mode1 = [False, -273]
+        if "set_to" in configFile["Tenney_Chamber"]["USE_CHAMBER"]:
+            self.tenney_chamber_mode1 = [True, int(configFile["Tenney_Chamber"]["USE_CHAMBER"].split("set_to")[1]) ]
         self.show_chamber_status = bool(configFile["Tenney_Chamber"]["SHOW_STATUS"])
         self.tenney_chamber_wait_time = int(configFile["Tenney_Chamber"]["WAIT_TIME"])
         self.temperature_list = [ int(x) for x in configFile["Tenney_Chamber"]["TEMPERATURE_LIST"].split(",") ]
