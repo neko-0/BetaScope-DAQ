@@ -77,8 +77,11 @@ class BetaDAQ:
                 f4t.check_temperature( tenney_chamber_mode1[1] )
             else:
                 pass
+<<<<<<< HEAD
 
             piSensor = PI_TempSensor()
+=======
+>>>>>>> 00b6ec303f39b2134c5545989eb29afd2ba8549e
 
             Scope = ScopeProducer( self.configFile )
             PowerSupply = PowerSupplyProducer( self.configFile )
@@ -150,6 +153,22 @@ class BetaDAQ:
                     event = 0
                     fail_counter = 0
                     while event < self.configFile.NumEvent:
+<<<<<<< HEAD
+=======
+                        event += 1
+
+                        if tenney_chamber or tenney_chamber_mode1[0] :
+                            outROOTFile.additional_branch["temperature"][0] = f4t.get_temperature()
+                            outROOTFile.additional_branch["humidity"][0] = f4t.get_humidity()
+
+                        Scope.WaitForTrigger()
+                        #print("pass wait")
+                        outROOTFile.i_timestamp[0] = time.time()
+                        if event==0 or event%100==0:
+                            current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
+                        outROOTFile.i_current[0] = current_100cycle
+                        waveData = ""
+>>>>>>> 00b6ec303f39b2134c5545989eb29afd2ba8549e
                         try:
                             event += 1
                             outROOTFile.additional_branch["ievent"][0] = event
