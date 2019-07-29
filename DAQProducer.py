@@ -44,6 +44,9 @@ class ScopeProducer:
                 return SetTrigger
             self.SetTrigger = Produce_SetTrigger()
 
+    def _query(self, cmd):
+        return self.Scope.inst.query(cmd)
+
 
 class PowerSupplyProducer:
     def __init__(self, configFile ):

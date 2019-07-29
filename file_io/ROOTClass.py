@@ -1,5 +1,6 @@
 import ROOT
 from array import array
+from general.Color_Printing import ColorFormat
 
 class ROOTFileOutput():
     def __init__(self, fileName, branch_list, opt=None):
@@ -33,9 +34,19 @@ class ROOTFileOutput():
             b.clear()
 
     def create_branch(self, name, type):
-        self.additional_branch[str(name)] = array("d", [0])
+        if type == "D":
+            self.additional_branch[str(name)] = array("d", [0])
+        elif type == "I":
+            self.additional_branch[str(name)] = array("i", [0])
+        else:
+            ColorFormat.printColor(" >> Invalid data type for {branch}".format(branch=name), "g")
+            ColorFormat.printColor(" >> Using default (type Double)", "g")
+            
         self.ttree.Branch(str(name), self.additional_branch[name], "%s/%s"%(name, type) )
+        ColorFormat.printColor(" >> additional branch (%s) is created"%name, "g")
 
     def Close(self):
+        ColorFormat.printColor(" >> Writing file", "g")
         self.tfile.Write()
         self.tfile.Close()
+        ColorFormat.printColor(" >> file is finished", "g")

@@ -20,9 +20,9 @@ class LecroyScope(object):
             print("No ip address")
             return
         print(ip_address)
-        rm=visa.ResourceManager("@py")
+        self.__rm = visa.ResourceManager("@py")
         print("Using ethernet connection: "),
-        self.inst = rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
+        self.inst = self.__rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
         self.inst.write("*IDN?;")
         idn = self.inst.read()
         if "LECROY" in idn:

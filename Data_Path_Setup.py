@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import datetime
 
 #===============================================================================
 def Setup_Data_Folder(master_dir, sub_dir, runNum ):
@@ -71,16 +72,44 @@ def Check_File( currentFile ):
     else:
         return True
 
+def generate_user(username):
+    from hashlib import sha256
+    import getpass
+    with open("{user}_daqPW.dat".format(user=username), "wb") as f:
+        pw = getpass.getpass("Please enter your password: \n")
+        encrypted_pw = sha256(pw.rstrip()).hexdigest()
+        f.write(encrypted_pw)
+
 
 def CreateDescription( RunNumber ):
     fileName = "Sr_Run_" + str(RunNumber) + "_Description.ini"
     fileExist = Check_File(fileName)
+    date = datetime.datetime.now()
+    user = ""
+    from hashlib import sha256
+    import getpass
+    import os
+    while user=="":
+        user = str(raw_input("USER NAME:"))
+        user_pw_file = "/home/yuzhan/DAQForProduction/{username}_daqPW.dat".format(username=user)
+        if os.path.exists(user_pw_file):
+            with open(user_pw_file, "rb") as f:
+                pw = getpass.getpass("Please enter your password: \n")
+                decode_pw = sha256(pw.rstrip()).hexdigest()
+                stored_pw = f.read()
+                if decode_pw == stored_pw:
+                    print("Okay")
+                else:
+                    print("error re-try")
+                    user = ""
+        else:
+            pass
     if not fileExist:
         with open(fileName, "w") as f:
             f.write("[Run_Description] \n")
             f.write("#feel free to add anything that you think is needed \n")
-            f.write("User = Yuzhan \n")
-            f.write("Date = 9012/12/12 \n")
+            f.write("User = {username} \n".format(username=user) )
+            f.write("Date = %s \n"%str(date) )
             f.write("DUT_Senor_Name = \n")
             f.write("Trigger_Sensor_Name = \n")
             f.write("DUT_Readout_B = \n")
@@ -93,4 +122,4 @@ def CreateDescription( RunNumber ):
             f.write("DUT_PS_Channel = 2 \n")
             f.write("Trigger_PS_Channel = 3 \n")
             f.write("Purpose = \n")
-            f.write("Addition_Notes = \n")
+            f.write("Addition_Notes = with tenny chamber;\n")

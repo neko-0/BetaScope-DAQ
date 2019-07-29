@@ -13,22 +13,23 @@ class SimpleCaenPowerSupply(object):
 
     def __init__(self):
 
-        self.status_bit = {
-        "00000":"on",
-        "00001":"RUP",
-        "00002":"RDW",
-        "00003":"OVC",
-        "00004":"OVV",
-        "00005":"UNV",
-        "00006":"MAXV",
-        "00007":"TRIP",
-        "00008":"OVP",
-        "00009":"OVT",
-        "00010":"DIS",
-        "00011":"KILL",
-        "00012":"ILK",
-        "00013":"NOCAL",
-        "00141":"TRIP"
+        self.__status_bit_meaning = {
+        0: ["ON", "On-Off switch"],
+        1: ["RUP", "Channel Ramp UP"],
+        2: ["RDW", "Channel Ramp DOWN"],
+        3: ["OVC", "Current > ISET."],
+        4: ["OVV", "Voltage > VSET."],
+        5: ["UNV", "Voltage < VSET."],
+        6: ["MAXV", "Hitting Max voltage!"],
+        7: ["TRIP", "Channel tripped!!!"],
+        8: ["OVP", "Output power > Max."],
+        9: ["OVT", "Temperature > 105C."],
+        10: ["DIS", "Ch disabled (REMOTE Mode and Switch on OFF position)"],
+        11: ["KILL", "Ch in KILL via front panel."],
+        12: ["ILK", "CH in INTERLOCK via front panel"],
+        13: ["NOCAL", "Calibration Error"],
+        14: ["N.C", "Reserved bit"],
+        15: ["N.C", "Reserved bit"]
         }
 
         global xx
@@ -103,7 +104,7 @@ class SimpleCaenPowerSupply(object):
         self.simple_set(channel, "VSET", value)
         print("VMON: {}".format(VMON))
         #print(self.simple_query("VMON", channel))
-        timeout_counter = 5000
+        timeout_counter = 1000
         counter = 0
         current_limit = float(self.simple_query("ISET", channel))
         current_incre_step = 2.0
@@ -113,7 +114,7 @@ class SimpleCaenPowerSupply(object):
             VMON = self.simple_query("VMON", channel)
             #time.sleep(3)
             status = self.read_channel_status_bit(channel)
-            if "TRIP" in self.status_bit[status]:
+            if self.decodeStatusBit(status, 3):
                 current_limit += current_incre_step
                 if current_limit < currentMax:
                     pass
@@ -126,10 +127,12 @@ class SimpleCaenPowerSupply(object):
                 self.simple_set(channel, "ISET", current_limit)
                 ColorFormat.printColor("Restart rampnig")
             if( counter == timeout_counter ):
+                return 0
                 print("Timeout: Maximum counter reached {}".format(timeout_counter))
                 break
         print("Finished, the voltage now is {}".format(self.simple_query("VMON", channel)))
         print("\n")
+        return 1
 
     def set_voltage_Q(self, channel, value, currentMax=1.2):
         VMON = self.simple_query("VMON", channel)
@@ -142,7 +145,7 @@ class SimpleCaenPowerSupply(object):
             VMON = self.simple_query("VMON", channel)
             counter += 1
             status = self.read_channel_status_bit(channel)
-            if "TRIP" in self.status_bit[status]:
+            if self.decodeStatusBit(status, 3):
                 current_limit += current_incre_step
                 if current_limit < currentMax:
                     pass
@@ -184,7 +187,7 @@ class SimpleCaenPowerSupply(object):
     def read_channel_status_bit(self, channel ):
         stat = self.simple_query( "STAT", channel )
         stat = stat.split("\r")[0]
-        return str(stat)
+        return stat
 
     def set_channel_status_bit(self, channel, value):
         self.simple_set(channel, "STAT", value)
@@ -232,6 +235,16 @@ class SimpleCaenPowerSupply(object):
                 return 1
         return 0
 
+    def decodeStatusBit( self, status, bit):
+        status_bits = format(int(status), "#016b")
+        if bit > 15:
+            ColorFormat.printColor("bit > max bit(15)", "y")
+        else:
+            if status_bits[15-bit] == "1":
+                ColorFormat.printColor("WARNING: %s"%self.__status_bit_meaning[bit][1], "y")
+                return 1
+            else:
+                return 0
 
 
     def close(self, channel):
