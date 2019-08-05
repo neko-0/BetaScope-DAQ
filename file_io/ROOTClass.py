@@ -1,9 +1,23 @@
+import os
 import ROOT
 from array import array
 from general.Color_Printing import ColorFormat
 
 class ROOTFileOutput():
     def __init__(self, fileName, branch_list, opt=None):
+        #check to see if file exist
+        same_file_counter = 1
+        while True:
+            if os.path.isfile(fileName):
+                print("file already existed, incrementing file index to {counter}".format(counter=same_file_counter))
+                same_file_counter +=1
+                fileName = fileName.split(".root")[0] + ".root.{i}".format(i=same_file_counter)
+                if os.path.isfile(fileName):
+                    continue
+                else:
+                    break
+
+        #start creating output file
         self.tfile = ROOT.TFile( fileName, "RECREATE", "8")
         self.ttree = ROOT.TTree( "wfm", "recorded waveform(remote mode)")
         self.w = []
@@ -41,7 +55,7 @@ class ROOTFileOutput():
         else:
             ColorFormat.printColor(" >> Invalid data type for {branch}".format(branch=name), "g")
             ColorFormat.printColor(" >> Using default (type Double)", "g")
-            
+
         self.ttree.Branch(str(name), self.additional_branch[name], "%s/%s"%(name, type) )
         ColorFormat.printColor(" >> additional branch (%s) is created"%name, "g")
 

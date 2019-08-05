@@ -86,11 +86,12 @@ class BetaDAQ:
             PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
             if tenney_chamber:
 
-                numIncre = (self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-self.configFile.dut_min_voltage_from_chamber)/20
+                stepSize = 10
+                numIncre = (self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-self.configFile.dut_min_voltage_from_chamber)/stepSize
                 self.configFile.VoltageList = []
                 self.configFile.FileNameList = []
                 for aa in range(numIncre):
-                    newVolt = self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-aa*20
+                    newVolt = self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-aa*stepSize
                     if newVolt > self.configFile.dut_min_voltage_from_chamber:
                         self.configFile.VoltageList.append(newVolt)
                         self.configFile.FileNameList.append( "Sr_Run%s_%sV_trig%sV"%(self.configFile.RunNumber, newVolt, self.configFile.TriggerVoltage )  )
