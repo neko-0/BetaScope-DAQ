@@ -16,6 +16,8 @@ class ROOTFileOutput():
                     continue
                 else:
                     break
+            else:
+                break
 
         #start creating output file
         self.tfile = ROOT.TFile( fileName, "RECREATE", "8")

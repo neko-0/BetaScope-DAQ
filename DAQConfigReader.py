@@ -70,6 +70,9 @@ class DAQConfig:
         self.RunNumber = str(configFile["File_Name"]["RUN_NUMBER"])
         self.FileNameSuffix = "trig%sV"%(self.TriggerVoltage)
 
+        self.WAIT_TIME = int(configFile["Voltage_Scan"]["WAIT_TIME"])
+        self.CYCLE = int(configFile["Voltage_Scan"]["CYCLE"])
+
         for volt in self.VoltageList:
             #self.FileNameList.append( str("Sr_Run"+str(self.RunNumber)+str(volt)+"V_"+self.FileNameSuffix ) )
             self.FileNameList.append( "Sr_Run%s_%sV_%s"%(self.RunNumber, volt, self.FileNameSuffix ) )
