@@ -63,18 +63,14 @@ class BetaDAQ:
 
             current_set_temperature = 20
 
+            _current_time = time.time()
+
             if tenney_chamber:
                 self.configFile.TriggerVoltage = trigger_voltage_list[tempIndex]
                 f4t.set_temperature( temperature_list[tempIndex] )
                 f4t.check_temperature( temperature_list[tempIndex] )
-                _current_time = time.time()
                 #time_sender = progess_bar(2)
                 current_set_temperature = temperature_list[tempIndex]
-                while((time.time()-_current_time) >= self.configFile.tenney_chamber_wait_time):
-                    duration = time.time()-_current_time
-                    if duration%10==0:
-                        #time_sender("Chamber is waiting: ", "% (/%)"%(duration, self.configFile.tenney_chamber_wait_time))
-                        print(duration)
             elif tenney_chamber_mode1[0]:
                 f4t.set_temperature( tenney_chamber_mode1[1] )
                 f4t.check_temperature( tenney_chamber_mode1[1] )
@@ -82,11 +78,18 @@ class BetaDAQ:
             else:
                 pass
 
+            #wait for temperature to be stable
+            while((time.time()-_current_time) <= self.configFile.tenney_chamber_wait_time):
+                duration = time.time()-_current_time
+                if duration%10==0:
+                    #time_sender("Chamber is waiting: ", "% (/%)"%(duration, self.configFile.tenney_chamber_wait_time))
+                    print(duration)
+
+            #creating instruments for the DAQ
             piSensor = PI_TempSensor()
-
             Scope = ScopeProducer( self.configFile )
-
             PowerSupply = PowerSupplyProducer( self.configFile )
+
             PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
 
             if tenney_chamber:
