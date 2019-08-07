@@ -107,6 +107,7 @@ class DAQConfig:
         ColorFormat.printColor(self.ThresholdScan_FileNameList, "y")
 
         self.tenney_chamber = bool(configFile["Tenney_Chamber"]["USE_CHAMBER"]=="True")
+        self.TEMP_RESET = bool(configFile["Tenney_Chamber"]["TEMP_RESET"]=="True")
         self.tenney_chamber_mode1 = [False, -273]
         if "set_to" in configFile["Tenney_Chamber"]["USE_CHAMBER"]:
             self.tenney_chamber_mode1 = [True, int(configFile["Tenney_Chamber"]["USE_CHAMBER"].split("set_to")[1]) ]

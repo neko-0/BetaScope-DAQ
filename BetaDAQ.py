@@ -61,13 +61,16 @@ class BetaDAQ:
 
         for tempIndex in range(len(temperature_list)):
 
+            current_set_temperature = 20
+
             if tenney_chamber:
                 self.configFile.TriggerVoltage = trigger_voltage_list[tempIndex]
                 f4t.set_temperature( temperature_list[tempIndex] )
                 f4t.check_temperature( temperature_list[tempIndex] )
                 _current_time = time.time()
                 #time_sender = progess_bar(2)
-                while(time.time() <= self.configFile.tenney_chamber_wait_time):
+                current_set_temperature = temperature_list[tempIndex]
+                while((time.time()-_current_time) >= self.configFile.tenney_chamber_wait_time):
                     duration = time.time()-_current_time
                     if duration%10==0:
                         #time_sender("Chamber is waiting: ", "% (/%)"%(duration, self.configFile.tenney_chamber_wait_time))
@@ -75,6 +78,7 @@ class BetaDAQ:
             elif tenney_chamber_mode1[0]:
                 f4t.set_temperature( tenney_chamber_mode1[1] )
                 f4t.check_temperature( tenney_chamber_mode1[1] )
+                current_set_temperature = tenney_chamber_mode1[1]
             else:
                 pass
 
@@ -227,13 +231,30 @@ class BetaDAQ:
                         print("Voltage dose not matche!")
 
                 PowerSupply.Close()
+
+                #here is the bias cycling and temperature reseting process.
                 if self.configFile.CYCLE>1:
+
+                    if self.configFile.TEMP_RESET:
+                        print("You have told it to do temperature cycle! going to 20C")
+                        time.sleep(120)
+                        f4t.set_temperature( 20 )
+                        f4t.check_temperature( 20 )
+
                     print("Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(nap_time = self.configFile.WAIT_TIME))
-                    for i in xrange(self.configFile.WAIT_TIME,0,-1):
+                    for leftTime in xrange(self.configFile.WAIT_TIME,0,-1):
                         time.sleep(1)
-                        if i%300==0:
-                            print "nap time remaining...{remain_time}".format(remain_time)
+                        if leftTime%300==0:
+                            print "nap time remaining...{remain_time}".format(remain_time=leftTime)
                     print("\nGood Morning!\n")
+
+                    if self.configFile.TEMP_RESET:
+                        print("You have told it to do temperature cycle! going to {temp}".format(temp=current_set_temperature ))
+                        f4t.set_temperature( current_set_temperature )
+                        f4t.check_temperature( current_set_temperature )
+                        print("Let's wait a bit to let the temperature settle down :)")
+                        time.sleep(900)
+
                     PowerSupply = PowerSupplyProducer( self.configFile )
                     PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
 
