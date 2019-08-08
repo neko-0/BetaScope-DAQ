@@ -57,8 +57,8 @@ class F4T_Controller:
         humiValue = humiValue.split("\n")[0]
         return float(humiValue)
 
-    def check_temperature(self, value):
-        while abs(self.get_temperature()-float(value))>=3:
+    def check_temperature(self, value, err=1.5):
+        while abs(self.get_temperature()-float(value))>=err:
             time.sleep(5)
             continue
 
