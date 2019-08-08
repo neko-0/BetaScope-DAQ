@@ -236,7 +236,7 @@ class BetaDAQ:
                 PowerSupply.Close()
 
                 #here is the bias cycling and temperature reseting process.
-                if self.configFile.CYCLE>1:
+                if self.configFile.CYCLE>1 and cyc != self.configFile.CYCLE-1:
 
                     if self.configFile.TEMP_RESET:
                         print("You have told it to do temperature cycle! going to 20C")
