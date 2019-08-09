@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
             f4t = f4t_controller.F4T_Controller()
 
-            outROOTFile = ROOTClass.ROOTFileOutput("user_data/temperature_cycle.root", 0 )
+            outROOTFile = ROOTClass.ROOTFileOutput("user_data/temperature_cycle.root", [] )
             outROOTFile.create_branch("temperature", "D")
             outROOTFile.create_branch("humidity", "D")
             outROOTFile.create_branch("cycle", "I")
