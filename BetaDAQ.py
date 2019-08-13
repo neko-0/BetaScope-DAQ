@@ -154,7 +154,7 @@ class BetaDAQ:
                         rm = visa.ResourceManager("@py")
                         xid = rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid
 
-                        current_100cycle = 0.0
+                        current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
                         start_time = time.time()
                         event = 0
                         fail_counter = 0

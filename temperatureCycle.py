@@ -83,5 +83,6 @@ if __name__ == "__main__":
 
                 print("cycle {} is finish, move to next cycle".format(cyc+1) )
 
+            outROOTFile.Close()
             print("all cycle are finished. Set 20C")
             f4t.set_temperature(20)
