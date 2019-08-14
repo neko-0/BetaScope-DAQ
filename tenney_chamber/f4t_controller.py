@@ -26,7 +26,6 @@ class F4T_Controller:
     def get_temperature(self):
         scpi_command_get_temp = ":SOURCE:CLOOP1:PVALUE?"
         self.sock.sendall(scpi_command_get_temp)
-
         try:
             tempValue = self.sock.recv(1024)
         #except socket.error as (code, msg):
@@ -61,6 +60,36 @@ class F4T_Controller:
         while abs(self.get_temperature()-float(value))>=err:
             time.sleep(5)
             continue
+
+
+    def temperature_ramp_rate(self, action, mode, value=""):
+        '''
+        param action: read or write ramp rate from the temperature loop. Accept parameter like "set", "write", "get", "read"
+        param mode: mode can be ramp scale or ramp rate. Accept "scale" or "rate"
+        param value: ramp rate. Accept numerical value and "HOURS" or "MINUTES"
+        '''
+
+        scpi_command = ":SOURCE:CLOOP1:{mode}{val}"
+        if "set" in action or "write" in action:
+            if "scale" in mode:
+                if not value:value="MINUTES"
+                scpi_command = scpi_command.format(mode="RSCAle ", val=value)
+                self.sock.sendall(scpi_command)
+            if "rate" in mode:
+                if not value:value=10
+                scpi_command = scpi_command.format(mode="RTIME ", val=value)
+                self.sock.sendall(scpi_command)
+        elif "get" in action or "read" in action:
+            if "scale" in mode:
+                scpi_command = scpi_command.format(mode="RSCAle?", val="")
+                self.sock.sendall(scpi_command)
+                print(self.sock.recv(1024))
+            if "rate" in mode:
+                scpi_command = scpi_command.format(mode="RTIME?", val="")
+                self.sock.sendall(scpi_command)
+                print(self.sock.recv(1024))
+        else:
+            print("Invalid parameter!")
 
     def log_temp_humi_to_file(self, output_name="temp_humi.txt", duration=3600*10, show_plot=True):
         output_name = "start_time_%s_%s"%(int(time.time()), output_name)

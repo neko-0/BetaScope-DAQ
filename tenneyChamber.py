@@ -50,3 +50,11 @@ if __name__ == "__main__":
          f4t = f4t_controller.F4T_Controller()
          set_value = argv.job_type.split("set_temp=")[1]
          f4t.set_temperature( set_value )
+
+    if "get_temp" in argv.job_type:
+        f4t = f4t_controller.F4T_Controller()
+        print( f4t.get_temperature() )
+
+    if "set_ramp_rate" in argv.job_type:
+        f4t = f4t_controller.F4T_Controller()
+        f4t.temperature_ramp_rate("read", "rate")

@@ -16,7 +16,7 @@ class PI_TempSensor:
         except urllib2.URLError, e:
             return {"humidity":10e10, "temperature":10e10}
         except socket.timeout, e:
-            return {"humidity":10e10, "temperature":10e10}
+            return {"humidity":10e11, "temperature":10e11}
         data = connc.read()
         odata = json.loads(data)
         return odata

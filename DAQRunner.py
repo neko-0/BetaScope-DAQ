@@ -1,11 +1,17 @@
 from BetaDAQ import *
 from general.general import *
 import subprocess
+import os
 
 editor = GetEditor("gedit")
 
 if __name__ == "__main__":
+
     print(" \n BetaScope DAQ is created \n")
+
+    daq_pid = os.getpid()
+    with open("user_data/daq_pid.log", "w") as log:
+        log.write("pid = {}".format(daq_pid) )
 
     mode = ["beta", "ts"]
 
