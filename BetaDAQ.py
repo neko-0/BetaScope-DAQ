@@ -148,6 +148,8 @@ class BetaDAQ:
                         outROOTFile.additional_branch["bias"][0] = self.configFile.VoltageList[i]
 
                         outROOTFile.create_branch("ievent", "I")
+                        outROOTFile.create_branch("cycle", "I") #recored the (temperature or repeated msmt) cycle number.
+                        outROOTFile.additional_branch["cycle"][0] = cyc
                         print("Ready for data taking")
 
                         import pyvisa as visa

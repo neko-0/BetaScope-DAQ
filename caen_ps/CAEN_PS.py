@@ -265,6 +265,10 @@ class SimpleCaenPowerSupply(object):
           self.channel_switch(3, "OFF")
         print("\n")
 
+if __name__ == "__main__":
+    print("testing")
+    ps = SimpleCaenPowerSupply()
+    
 '''
 test_power = SimpleCaenPowerSupply()
 remote_status = test_power.check_remote_status()
