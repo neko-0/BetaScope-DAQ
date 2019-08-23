@@ -115,8 +115,8 @@ class BetaDAQ:
             for cyc in range(self.configFile.CYCLE):
 
                 if self.configFile.REVERSE_BIAS_SCAN:
-                    self.configFile.VoltageList[i].reverse()
-                    self.configFile.FileNameList[i].reverse()
+                    self.configFile.VoltageList.reverse()
+                    self.configFile.FileNameList.reverse()
 
                 for i in range(len(self.configFile.FileNameList)):
                     failSetVoltage = PowerSupply.SetVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i], self.configFile.dut_max_current_list_from_chamber[tempIndex] )
@@ -161,6 +161,13 @@ class BetaDAQ:
                         outROOTFile.create_branch("ievent", "I")
                         outROOTFile.create_branch("cycle", "I") #recored the (temperature or repeated msmt) cycle number.
                         outROOTFile.additional_branch["cycle"][0] = cyc
+
+                        outROOTFile.create_branch("reverse_scan", "I")
+                        if self.configFile.REVERSE_BIAS_SCAN:
+                            outROOTFile.additional_branch["reverse_scan"][0] = 1
+                        else:
+                            outROOTFile.additional_branch["reverse_scan"][0] = 0
+
                         print("Ready for data taking")
 
                         import pyvisa as visa
