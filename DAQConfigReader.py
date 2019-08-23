@@ -72,6 +72,7 @@ class DAQConfig:
 
         self.WAIT_TIME = int(configFile["Voltage_Scan"]["WAIT_TIME"])
         self.CYCLE = int(configFile["Voltage_Scan"]["CYCLE"])
+        self.REVERSE_BIAS_SCAN = int(configFile["Voltage_Scan"]["REVERSE_BIAS_SCAN"])
 
         for volt in self.VoltageList:
             #self.FileNameList.append( str("Sr_Run"+str(self.RunNumber)+str(volt)+"V_"+self.FileNameSuffix ) )

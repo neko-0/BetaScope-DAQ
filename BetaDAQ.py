@@ -113,12 +113,23 @@ class BetaDAQ:
                 ColorFormat.printColor("file list is replaced with \n %s"%(self.configFile.FileNameList), "y")
 
             for cyc in range(self.configFile.CYCLE):
+
+                if self.configFile.REVERSE_BIAS_SCAN:
+                    self.configFile.VoltageList[i].reverse()
+                    self.configFile.FileNameList[i].reverse()
+
                 for i in range(len(self.configFile.FileNameList)):
                     failSetVoltage = PowerSupply.SetVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i], self.configFile.dut_max_current_list_from_chamber[tempIndex] )
                     if failSetVoltage == 1: continue
                     V_Check = PowerSupply.ConfirmVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i] )
                     if V_Check:
+
                         dataFileName = self.configFile.FileNameList[i]+".root"
+                        if "_{}V_trig".format(self.configFile.VoltageList[i]) in dataFileName:
+                            pass
+                        else:
+                            ColorFormat.printColor("Voltage and output file name dose not match!!", "y")
+
                         if tenney_chamber:
                             dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(temperature_list[tempIndex])
                         elif tenney_chamber_mode1[0]:
