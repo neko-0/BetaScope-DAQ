@@ -215,7 +215,7 @@ class SimpleCaenPowerSupply(object):
 
     def Set_Compliance(self, complicance, rate_of_change):
         self.complicance = complicance #uA
-        self.delta_I = rate_of_change #uA\
+        self.delta_I = rate_of_change #uA
 
     def Check_Compliacne(self, channel, iValue):
         if self.initial_I == 1:
@@ -236,6 +236,12 @@ class SimpleCaenPowerSupply(object):
         return 0
 
     def decodeStatusBit( self, status, bit):
+        '''
+        decoding the channel status bit
+
+        param status := is the raw input bit,
+        param bit := the bit you want to check against.
+        '''
         status_bits = format(int(status), "#016b")
         if bit > 15:
             ColorFormat.printColor("bit > max bit(15)", "y")
@@ -245,6 +251,18 @@ class SimpleCaenPowerSupply(object):
                 return 1
             else:
                 return 0
+
+    #===========================================================================
+    def checkTripped(self, ch, voltage):
+        #check to see if the channel is tripped
+        status_bit = self.read_channel_status_bit(ch)
+        tripped = self.decodeStatusBit( status_bit, 7)
+        if tripped:
+            self.channel_switch(ch, "ON")
+            self.set_voltage_Q(ch, voltage)
+
+
+
 
 
     def close(self, channel):
@@ -268,7 +286,7 @@ class SimpleCaenPowerSupply(object):
 if __name__ == "__main__":
     print("testing")
     ps = SimpleCaenPowerSupply()
-    
+
 '''
 test_power = SimpleCaenPowerSupply()
 remote_status = test_power.check_remote_status()

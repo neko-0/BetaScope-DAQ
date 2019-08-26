@@ -178,6 +178,10 @@ class BetaDAQ:
                         start_time = time.time()
                         event = 0
                         fail_counter = 0
+
+                        rate_checker = time.time()
+                        daq_current_rate = 0
+
                         while event < self.configFile.NumEvent:
                             try:
                                 event += 1
@@ -228,9 +232,17 @@ class BetaDAQ:
                                 waveData = []
                                 waveData = ""
                                 gc.collect()
+
                                 if(event%100==0):
+                                    daq_current_rate = 100.0/(time.time() - rate_checker)
                                     date = datetime.datetime.now()
-                                    print("[{}] Saved event on local disk : {}".format(str(date), event))
+                                    rate_checker = time.time()
+                                    print("[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(date=str(date), event=event, total=self.configFile.NumEvent, rate=daq_current_rate))
+                                    if daq_current_rate < 5:
+                                        ColorFormat.printColor("The rate is less than 5. Performaing trigger check ", "c")
+                                        PowerSupply.PowerSupply.checkTripped(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage)
+
+
                             except socket.error, e:
                                 ColorFormat.printColor("Catch exception: {daq_error}, This might be that you are resizing the terminal".format(daq_error=e), "y")
                                 ColorFormat.printColor("Continue data taking.", "y")
