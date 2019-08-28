@@ -36,7 +36,9 @@ class SimpleCaenPowerSupply(object):
         rm = visa.ResourceManager("@py")
         resources = rm.list_resources()
         print(resources)
-        self.inst = rm.open_resource(resources[1])
+        for res in resources:
+            if "ttyACM0" in res:
+                self.inst = rm.open_resource( res )
         #self.inst.write_termination("\r\n")
         #self.inst.read_termination("\r\n")
         idn = self.inst.query("$BD:"+xx+",CMD:MON,PAR:BDNAME")

@@ -3,6 +3,7 @@ from DAQProducer import *
 from Data_Path_Setup import *
 from file_io.ROOTClass import *
 from general.general import *
+from agilent_e3646a.e3646a_ps import *
 #import general
 import socket
 import gc
@@ -168,6 +169,22 @@ class BetaDAQ:
                         else:
                             outROOTFile.additional_branch["reverse_scan"][0] = 0
 
+                        lowVoltage_PS = E3646A_PS()
+                        if lowVoltage_PS.is_opened:
+                            outROOTFile.create_branch("lowVoltPS_V_ch1", "D")
+                            outROOTFile.create_branch("lowVoltPS_C_ch1", "D")
+                            outROOTFile.create_branch("lowVoltPS_V_ch2", "D")
+                            outROOTFile.create_branch("lowVoltPS_C_ch2", "D")
+
+                        def fill_lowVolt(outROOTFile, lowVoltage_PS):
+                            lowVoltage_PS_Ch1 = lowVoltage_PS.read_voltageCurrent(1)
+                            lowVoltage_PS_Ch2 = lowVoltage_PS.read_voltageCurrent(2)
+                            outROOTFile.additional_branch["lowVoltPS_V_ch1"][0] = lowVoltage_PS_Ch1[0]
+                            outROOTFile.additional_branch["lowVoltPS_C_ch1"][0] = lowVoltage_PS_Ch1[1]
+                            outROOTFile.additional_branch["lowVoltPS_V_ch2"][0] = lowVoltage_PS_Ch2[0]
+                            outROOTFile.additional_branch["lowVoltPS_C_ch2"][0] = lowVoltage_PS_Ch2[1]
+                        fill_lowVolt(outROOTFile, lowVoltage_PS)
+
                         print("Ready for data taking")
 
                         import pyvisa as visa
@@ -200,6 +217,7 @@ class BetaDAQ:
                                 outROOTFile.i_timestamp[0] = time.time()
                                 if event==0 or event%100==0:
                                     current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
+                                    fill_lowVolt(outROOTFile, lowVoltage_PS)
                                 outROOTFile.i_current[0] = current_100cycle
                                 waveData = ""
                                 try:
@@ -238,8 +256,8 @@ class BetaDAQ:
                                     date = datetime.datetime.now()
                                     rate_checker = time.time()
                                     print("[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(date=str(date), event=event, total=self.configFile.NumEvent, rate=daq_current_rate))
-                                    if daq_current_rate < 5:
-                                        ColorFormat.printColor("The rate is less than 5. Performaing trigger check ", "c")
+                                    if daq_current_rate < 1.5:
+                                        ColorFormat.printColor("The rate is less than 1. Performaing trigger check ", "c")
                                         PowerSupply.PowerSupply.checkTripped(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage)
 
 
