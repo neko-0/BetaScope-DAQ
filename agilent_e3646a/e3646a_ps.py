@@ -16,6 +16,7 @@ class E3646A_PS(object):
         except Exception as e:
             print("catch {e}".format(e=e) )
             self.is_opened = False
+            self.inst = ""
 
         if self.is_opened:
             self.device_name = self.inst.query("*IDN?").split(self.inst.read_termination)[0]
@@ -23,6 +24,12 @@ class E3646A_PS(object):
 
 
     def read_voltageCurrent(self, ch): #only ch1 and ch2
+
+        if not self.inst:
+            voltage = 10e11
+            current = 10e11
+            return (voltage, current)
+
         self.inst.write("INST:NSEL {ch}".format(ch=ch) )
         try:
             voltage = float(self.inst.query("MEAS:VOLT?").split("\n")[0] )

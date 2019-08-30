@@ -39,6 +39,7 @@ class SimpleCaenPowerSupply(object):
         for res in resources:
             if "ttyACM0" in res:
                 self.inst = rm.open_resource( res )
+                self.inst.clear()
         #self.inst.write_termination("\r\n")
         #self.inst.read_termination("\r\n")
         idn = self.inst.query("$BD:"+xx+",CMD:MON,PAR:BDNAME")

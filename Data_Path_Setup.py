@@ -62,7 +62,7 @@ def Check_Imon_File( current_file ):
         if not myfile.exists():
             return current_file
         else:
-            current_file = str(fcount) + "_" + current_file
+            current_file = current_file.split(".")[0] + ".txt.{}".format(fcount)
             fcount += 1
 
 def Check_File( currentFile ):

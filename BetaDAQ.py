@@ -177,12 +177,13 @@ class BetaDAQ:
                             outROOTFile.create_branch("lowVoltPS_C_ch2", "D")
 
                         def fill_lowVolt(outROOTFile, lowVoltage_PS):
-                            lowVoltage_PS_Ch1 = lowVoltage_PS.read_voltageCurrent(1)
-                            lowVoltage_PS_Ch2 = lowVoltage_PS.read_voltageCurrent(2)
-                            outROOTFile.additional_branch["lowVoltPS_V_ch1"][0] = lowVoltage_PS_Ch1[0]
-                            outROOTFile.additional_branch["lowVoltPS_C_ch1"][0] = lowVoltage_PS_Ch1[1]
-                            outROOTFile.additional_branch["lowVoltPS_V_ch2"][0] = lowVoltage_PS_Ch2[0]
-                            outROOTFile.additional_branch["lowVoltPS_C_ch2"][0] = lowVoltage_PS_Ch2[1]
+                            if lowVoltage_PS.is_opened:
+                                lowVoltage_PS_Ch1 = lowVoltage_PS.read_voltageCurrent(1)
+                                lowVoltage_PS_Ch2 = lowVoltage_PS.read_voltageCurrent(2)
+                                outROOTFile.additional_branch["lowVoltPS_V_ch1"][0] = lowVoltage_PS_Ch1[0]
+                                outROOTFile.additional_branch["lowVoltPS_C_ch1"][0] = lowVoltage_PS_Ch1[1]
+                                outROOTFile.additional_branch["lowVoltPS_V_ch2"][0] = lowVoltage_PS_Ch2[0]
+                                outROOTFile.additional_branch["lowVoltPS_C_ch2"][0] = lowVoltage_PS_Ch2[1]
                         fill_lowVolt(outROOTFile, lowVoltage_PS)
 
                         print("Ready for data taking")
@@ -278,18 +279,34 @@ class BetaDAQ:
                                 print(Scope.Scope.rm.visalib.sessions)
                                 print(Scope.Scope.inst.session)
                                 print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                #Scope.Scope.rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
+                                #Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 2
+
+                                '''
                                 for sec in Scope.Scope.rm.visalib.sessions:
                                     try:
                                         print(Scope.Scope.rm.visalib.sessions[sec].interface.lastxid)
                                         #Scope.Scope.rm.visalib.sessions[sec].interface.lastxid -= 1
                                     except:
                                         print("you are screwd!")
+                                '''
+
                                 #rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
                                 #print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                raw_input()
-                                Scope.Scope.inst.close()
-                                Scope = ScopeProducer( self.configFile )
+                                #raw_input()
+                                #Scope.Scope.inst.clear()
+                                #except Exception as e:
+                                    #print("Closing Scope. catch exception: {e}".format(e=e) )
+                                #del Scope
+                                try:
+                                    '''
+                                    Scope.Scope.rm.close()
+                                    Scope = ScopeProducer( self.configFile )
+                                    Scope.Scope.inst.clear()
+                                    '''
+                                    Scope.Scope.reopen_resource()
+                                except Exception as err:
+                                    print(err)
+
 
 
                         outROOTFile.Close()

@@ -23,6 +23,8 @@ class LecroyScope(object):
         self.rm = visa.ResourceManager("@py")
         print("Using ethernet connection: "),
         self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
+        self.ip_addr = ip_address
+        self.inst.clear()
         self.inst.write("*IDN?;")
         idn = self.inst.read()
         if "LECROY" in idn:
@@ -56,6 +58,9 @@ class LecroyScope(object):
     #===========================================================================
     def _Set_Screen_Display(self, channel, switch):
         self.inst.write("C{}:TRA {}".format(channel, switch))
+
+    def reopen_resource(self):
+        self.inst = self.rm.open_resource("TCPIP0::" + self.ip_addr + "::inst0::INSTR")
 
     #===========================================================================
     def _Set_Internal_Display(self, channel, switch):
