@@ -14,7 +14,13 @@ class Logger(object):
 
     def write(self, message):
         self.terminal.write(message)
+        message = message.replace("\033[92m", "")
+        message = message.replace("\033[93m", "")
+        message = message.replace("\033[36m", "")
+        message = message.replace("\033[35m", "")
+        message = message.replace("\033[0m", "")
         self.log.write(message)
+        self.log.flush()
 
     def flush(self):
         #this flush method is needed for python 3 compatibility.
