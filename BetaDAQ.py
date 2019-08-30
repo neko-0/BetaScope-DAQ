@@ -268,11 +268,28 @@ class BetaDAQ:
                                 ColorFormat.printColor("Catch unknown exception: {daq_error}, This might be that you are resizing the terminal".format(daq_error=E), "y")
                                 ColorFormat.printColor("Continue data taking.", "y")
 
+                                '''
                                 print(rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
                                 rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 2
                                 #rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
                                 print(rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
                                 #raw_input()
+                                '''
+                                print(Scope.Scope.rm.visalib.sessions)
+                                print(Scope.Scope.inst.session)
+                                print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
+                                #Scope.Scope.rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
+                                for sec in Scope.Scope.rm.visalib.sessions:
+                                    try:
+                                        print(Scope.Scope.rm.visalib.sessions[sec].interface.lastxid)
+                                        #Scope.Scope.rm.visalib.sessions[sec].interface.lastxid -= 1
+                                    except:
+                                        print("you are screwd!")
+                                #rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
+                                #print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
+                                raw_input()
+                                Scope.Scope.inst.close()
+                                Scope = ScopeProducer( self.configFile )
 
 
                         outROOTFile.Close()

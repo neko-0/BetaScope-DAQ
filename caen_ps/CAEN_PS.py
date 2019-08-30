@@ -132,7 +132,7 @@ class SimpleCaenPowerSupply(object):
                 return 0
                 print("Timeout: Maximum counter reached {}".format(timeout_counter))
                 break
-        print("Finished, the voltage now is {}".format(self.simple_query("VMON", channel)))
+        print("\nFinished, the voltage now is {}".format(self.simple_query("VMON", channel)))
         print("\n")
         return 1
 
