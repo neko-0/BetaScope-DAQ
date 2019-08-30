@@ -20,9 +20,9 @@ class LecroyScope(object):
             print("No ip address")
             return
         print(ip_address)
-        self.__rm = visa.ResourceManager("@py")
+        self.rm = visa.ResourceManager("@py")
         print("Using ethernet connection: "),
-        self.inst = self.__rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
+        self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
         self.inst.write("*IDN?;")
         idn = self.inst.read()
         if "LECROY" in idn:
@@ -45,7 +45,7 @@ class LecroyScope(object):
                     board += 1
                     #return
 
-        self.inst.timeout = 100000000
+        self.inst.timeout = 100000
 
         self.inst.write("Comm_ForMaT DEF9,WORD,BIN")
         #self.inst.write("SEQ ON, 5, 40e+12")
