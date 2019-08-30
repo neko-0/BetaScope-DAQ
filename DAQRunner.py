@@ -1,11 +1,16 @@
 from BetaDAQ import *
 from general.general import *
+from utility import logger
 import subprocess
+import sys
 import os
 
 editor = GetEditor("gedit")
 
 if __name__ == "__main__":
+
+    #create log file
+    sys.stdout = logger.Logger()
 
     print(" \n BetaScope DAQ is created \n")
 
