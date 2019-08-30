@@ -5,12 +5,14 @@ https://stackoverflow.com/questions/14906764/how-to-redirect-stdout-to-both-file
 
 import sys
 import os
+import time
 
 class Logger(object):
     def __init__(self):
         self.terminal = sys.stdout
         self.user_data_path = os.environ.get("BetaDAQ", "/tmp/") #getting the user data path
         self.log = open( self.user_data_path+"beta_daq.log", "a")
+        self.log.write(time.time())
 
     def write(self, message):
         self.terminal.write(message)
