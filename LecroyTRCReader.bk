@@ -4,10 +4,10 @@ import sys
 
 OFF_SET = 21
 LECROY_WAVEFORM_TEMPLATE ={
-"DESCRIPTOR_NAME":["16s", 0, 16],
-"TEMPLATE_NAME":["16s", 16, 32],
-"COMM_TYPE":["h", 32, 34],
-"COMM_ORDER":["h", 34, 36],
+"DESCRIPTOR_NAME":["2s", 0, 16],
+"TEMPLATE_NAME":["2s", 16, 32],
+"COMM_TYPE":["H", 32, 34],
+"COMM_ORDER":["H", 34, 36],
 "WAVE_DESCRIPTOR":["l", 36, 40],
 "USER_TEXT":["l", 40, 44],
 "RES_DESC1":["l", 44, 48],
@@ -110,14 +110,10 @@ def Decode_Bytes(data_bytes, format, TRCfile_mode=False):
         try:
             if "\x00" in unpacked_data:
                 unpacked_data = unpacked_data.split("\x00")[0]
-                #raw_input("done")
         except:
             pass
     else:
-        if "\x00" in unpacked_data:
-            unpacked_data = unpacked_data.split("\x00")[0]
-            Print(unpacked_data)
-            #raw_input("done")
+        pass
     return unpacked_data
 
 def trcReader( binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=False):#, bytes_fmt ):
@@ -125,19 +121,15 @@ def trcReader( binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=Fals
     OFF_SET = ""
     if OFF_SET == "":
         offset_bytes = binary_waveform[:50]
-        Print(offset_bytes)
         offset_ss = struct.unpack( "50s", offset_bytes)
         if type(offset_ss) == tuple:
             offset_ss = offset_ss[0]
-        OFF_SET = offset_ss.find(b"WAVEDESC")
-        #CH_prefix_index = offset_ss.find("C{}:WF ALL,".format(CH))
-        CH_prefix_index = offset_ss.find("C%d:WF ALL,"%int(CH))
-        CH_prefix_index2 = offset_ss.find("C{}:WF".format(CH))
+        OFF_SET = offset_ss.find("WAVEDESC")
+        CH_prefix_index = offset_ss.find("C{}:WF ALL,".format(CH))
         Print(CH_prefix_index)
-        Print(CH_prefix_index2)
-        if CH_prefix_index > 0:
+        if CH_prefix_index != 0:
             OFF_SET += CH_prefix_index
-        Print("OFF_SET {}".format(OFF_SET))
+        Print(OFF_SET)
 
     endianess = ""
     endi_bytes = binary_waveform[OFF_SET+LECROY_WAVEFORM_TEMPLATE["COMM_ORDER"][1]:OFF_SET+LECROY_WAVEFORM_TEMPLATE["COMM_ORDER"][2]]
@@ -194,7 +186,7 @@ def trcReader( binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=Fals
             vertical_gain_bytes =  binary_waveform[OFF_SET+LECROY_WAVEFORM_TEMPLATE["VERTICAL_GAIN"][1]:OFF_SET+LECROY_WAVEFORM_TEMPLATE["VERTICAL_GAIN"][2]]
             vertical_gain = struct.unpack( endianess+LECROY_WAVEFORM_TEMPLATE["VERTICAL_GAIN"][0], vertical_gain_bytes)
             vertical_gain = float(vertical_gain[0])
-            Print("vertical_gain:{}".format(vertical_gain))
+            #print("vertical_gain:{}".format(vertical_gain))
             USER_TEXT_bytes = int(trcReader( binary_waveform, "USER_TEXT", CH))
             TRIGTIME_ARRAY_bytes = int(trcReader( binary_waveform, "TRIGTIME_ARRAY", CH))
             trigger_time_array = binary_waveform[OFF_SET+LECROY_WAVEFORM_TEMPLATE["WAVE_SOURCE"][2]+USER_TEXT_bytes:OFF_SET+LECROY_WAVEFORM_TEMPLATE["WAVE_SOURCE"][2]+USER_TEXT_bytes+TRIGTIME_ARRAY_bytes]
@@ -203,7 +195,7 @@ def trcReader( binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=Fals
             #raw_input()
             for i in range(len(trigger_time_array)/struct.calcsize("d")):
                 d = struct.unpack(endianess+"d", trigger_time_array[0+i*8:8*i+8])
-                if i%2==0:Print(d)
+                #if i%2==0:print(d)
             #raw_input()
 
             RIS_TIME_ARRAY_bytes = int(trcReader( binary_waveform, "RIS_TIME_ARRAY", CH))
@@ -222,23 +214,16 @@ def trcReader( binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=Fals
             else:
                 wave_data_type = "h"
                 wave_data_byte_size = 2
-            #raw_input(wave_data_byte_size)
-            Print("WAVE count {}".format(wave_count))
+            Print(COMM_TYPE)
             #raw_input()
-            Print("segment_count {}".format(segment_count))
-            Print("vertical_offset {}".format(vertical_offset))
-            Print("vertical_gain {}".format(vertical_gain))
             for k in range(segment_count*2):
                 if (k+1)%2!=0:
-                    for i in range(wave_count-2):
+                    for i in range(wave_count):
                         voltage_bit = wave_data_stream[i*wave_data_byte_size+k*wave_count:i*wave_data_byte_size+wave_data_byte_size+k*wave_count]
-                        #raw_input(voltage_bit)
-                        #voltage_bit = wave_data_stream[i*wave_data_byte_size+k*wave_count:i*wave_data_byte_size+wave_data_byte_size+k*wave_count]
                         voltage_bit = struct.unpack(endianess+wave_data_type, voltage_bit)
                         voltage_bit = voltage_bit[0]
                         #print(voltage_bit)
-                        #Print("voltage_bit:{}".format(voltage_bit))
-                        ##raw_input((voltage_bit)*1.0*vertical_gain- vertical_offset)
+                        #print("voltage_bit:{}".format(voltage_bit))
                         wave_data.append( (voltage_bit)*1.0*vertical_gain- vertical_offset )
 
                 #print("here good")
