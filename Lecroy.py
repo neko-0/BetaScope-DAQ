@@ -2,6 +2,7 @@ import pyvisa as visa
 import time
 from time import sleep
 import sys
+import functools
 from LecroyTRCReader import *
 
 class LecroyScope(object):
@@ -25,6 +26,8 @@ class LecroyScope(object):
         self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
         self.ip_addr = ip_address
         self.inst.clear()
+        #self.inst.read_termination = '\r\n'
+        self.inst.write_termination = '\r\n'
         self.inst.write("*IDN?;")
         idn = self.inst.read()
         if "LECROY" in idn:
@@ -54,6 +57,10 @@ class LecroyScope(object):
 
     #***************************************************************************
     # Private
+
+    #===========================================================================
+    def set_read_byte(self, value):
+        self.inst.read_raw = functools.partial(self.inst.read_raw, value)
 
     #===========================================================================
     def _Set_Screen_Display(self, channel, switch):

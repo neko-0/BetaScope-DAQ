@@ -223,11 +223,12 @@ class BetaDAQ:
                                 waveData = ""
                                 try:
                                     waveData = Scope.GetWaveform( self.configFile.EnableChannelList )
+                                    #print(waveData)
                                 except:
                                     event -= 1
                                     fail_counter += 1
                                     print("fail getting data. {}".format(fail_counter))
-                                    if fail_counter == 1000:
+                                    if fail_counter == 5000:
                                         break
                                     else:
                                         continue

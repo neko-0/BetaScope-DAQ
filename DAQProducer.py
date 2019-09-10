@@ -16,6 +16,7 @@ class ScopeProducer:
         if "lecroy" in self._config.ScopeName:
             print("Lecroy scope is produced.")
             self.Scope = LecroyScope( self._config.ScopeIP )
+            self.Scope.set_read_byte(2048) #don't konw why read_raw() needs input. It wasn't like this before 2019/9/10
             print("Setting up scope trigger and power supply.")
             self.Scope.Arm_trigger( self._config.TriggerSetting[0], self._config.TriggerSetting[1], self._config.TriggerSetting[2], self._config.TriggerSetting[3] )
             print("Enabling scope channels...")
