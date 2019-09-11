@@ -3,7 +3,7 @@ import ROOT
 from array import array
 from general.Color_Printing import ColorFormat
 
-class ROOTFileOutput():
+class ROOTFileOutput(object):
     def __init__(self, fileName, branch_list, opt=None):
         #check to see if file exist
         same_file_counter = 1
