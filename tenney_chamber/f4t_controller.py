@@ -5,7 +5,7 @@ import multiprocessing as mp
 
 class F4T_Controller:
 
-    def __init__(self, ip_address="192.168.1.14", port=5025):
+    def __init__(self, ip_address="192.168.1.13", port=5025):
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM )
         self.sock.connect( ( ip_address, port) )

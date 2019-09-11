@@ -67,7 +67,14 @@ class LecroyScope(object):
         self.inst.write("C{}:TRA {}".format(channel, switch))
 
     def reopen_resource(self):
+        self.inst.close()
         self.inst = self.rm.open_resource("TCPIP0::" + self.ip_addr + "::inst0::INSTR")
+        self.inst.clear()
+        self.set_read_byte(2048)
+        self.inst.write("Comm_ForMaT DEF9,WORD,BIN")
+        self.inst.write("*IDN?;")
+        idn = self.inst.read()
+        print("reponed: {}".format(idn))
 
     #===========================================================================
     def _Set_Internal_Display(self, channel, switch):

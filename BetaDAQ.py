@@ -228,6 +228,12 @@ class BetaDAQ:
                                     event -= 1
                                     fail_counter += 1
                                     print("fail getting data. {}".format(fail_counter))
+
+                                    try:
+                                        Scope.Scope.reopen_resource()
+                                    except Exception as err:
+                                        print(err)
+
                                     if fail_counter == 5000:
                                         break
                                     else:
