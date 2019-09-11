@@ -10,8 +10,16 @@ class F4T_Controller:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM )
         self.sock.connect( ( ip_address, port) )
         self.sock.sendall("*IDN?")
-        self.name = self.sock.recv(1024)
-        print("You are connected to: %s "%self.name )
+
+        try:
+            self.name = self.sock.recv(1024)
+            self.is_opened = True
+        except Exception as e:
+            print("fail apon connection. Catch {}".format(e) )
+            self.is_opened = False
+
+        self.ipAddr = ip_address
+        print("You are connected to: {device} through {ipAddr}::SOCKET ".format(device=self.name, ipAddr=self.ipAddr) )
 
     def set_temperature( self, value):
         scpi_command = ":SOURCE:CLOOP1:SPOINT %s"%value
