@@ -2,24 +2,55 @@ import socket
 import time
 import errno
 import multiprocessing as mp
+from pymodbus.client.sync import ModbusTcpClient
 
 class F4T_Controller:
 
     def __init__(self, ip_address="192.168.1.13", port=5025):
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM )
-        self.sock.connect( ( ip_address, port) )
-        self.sock.sendall("*IDN?")
-
         try:
-            self.name = self.sock.recv(1024)
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM )
+            self.sock.connect( ( ip_address, port) )
+            self.sock.sendall("*IDN?")
+            self.name = self.sock.recv(1024).split("\n")[0]
             self.is_opened = True
         except Exception as e:
-            print("fail apon connection. Catch {}".format(e) )
+            self.sock = None
+            self.name = None
             self.is_opened = False
+            print("fail apon connection. Catch {}".format(e) )
 
         self.ipAddr = ip_address
         print("You are connected to: {device} through {ipAddr}::SOCKET ".format(device=self.name, ipAddr=self.ipAddr) )
+
+        try:
+            self._modbus = ModbusTcpClient(self.ipAddr)
+            self._modbus.connect()
+            self._modbus_connected = True
+        except:
+            self._modbus = None
+            self._modbus_connected = False
+            pass
+
+        self._control_loop_register = 2730 # this is the 1st loop, next loop is 2730+(n-1)*160
+        self._control_loop_mode = {"off":62, "auto":10, "manual":54}
+
+        self._set_default()
+
+    def _set_default(self):
+        if self.is_opened and self._modbus_connected:
+            self._modbus.write_register(self._control_loop_register, 10)
+            self._modbus.write_register(self._control_loop_register+160, 54)
+            self.set_purge_air("ON")
+
+    def turnOFF(self):
+        self._modbus.write_register(self._control_loop_register, 62)
+        self._modbus.write_register(self._control_loop_register+160, 62)
+        self.set_purge_air("OFF")
+
+    def set_purge_air(self, switch="ON"):
+        self.sock.sendall(":OUTP5:STAT {mode}".format(mode=switch) )
+        data = self.sock.recv(1024)
 
     def set_temperature( self, value):
         scpi_command = ":SOURCE:CLOOP1:SPOINT %s"%value
