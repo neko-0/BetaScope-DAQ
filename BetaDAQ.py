@@ -1,5 +1,8 @@
 from DAQConfigReader import *
-from DAQProducer import *
+
+from oscilloscope.scope_producer import *
+from power_supply.power_producer import *
+
 from Data_Path_Setup import *
 from file_io.ROOTClass import *
 from general.general import *
@@ -146,15 +149,16 @@ class BetaDAQ:
                         outROOTFile.create_branch("pi_temperature", "D")
                         outROOTFile.create_branch("pi_humidity", "D")
 
-                        for chNum in self.configFile.EnableChannelList:
-                            outROOTFile.create_branch("verScale%s"%chNum, "D" )
-                            outROOTFile.create_branch("horScale%s"%chNum, "D" )
-                            verScale = float(Scope._query("C%s:VDIV?"%chNum).split("VDIV ")[1].split(" ")[0])
-                            horScale = float(Scope._query("TDIV?").split("TDIV ")[1].split(" ")[0])
-                            print("Ver scale ch%s: %s"%(chNum,verScale))
-                            print("Hor scale ch%s: %s"%(chNum,horScale))
-                            outROOTFile.additional_branch["verScale%s"%chNum][0] = verScale
-                            outROOTFile.additional_branch["horScale%s"%chNum][0] = horScale
+                        if "lecroy" in Scope.name:
+                            for chNum in self.configFile.EnableChannelList:
+                                outROOTFile.create_branch("verScale%s"%chNum, "D" )
+                                outROOTFile.create_branch("horScale%s"%chNum, "D" )
+                                verScale = float(Scope._query("C%s:VDIV?"%chNum).split("VDIV ")[1].split(" ")[0])
+                                horScale = float(Scope._query("TDIV?").split("TDIV ")[1].split(" ")[0])
+                                print("Ver scale ch%s: %s"%(chNum,verScale))
+                                print("Hor scale ch%s: %s"%(chNum,horScale))
+                                outROOTFile.additional_branch["verScale%s"%chNum][0] = verScale
+                                outROOTFile.additional_branch["horScale%s"%chNum][0] = horScale
 
                         outROOTFile.create_branch("bias", "D")
                         outROOTFile.additional_branch["bias"][0] = self.configFile.VoltageList[i]
@@ -213,7 +217,8 @@ class BetaDAQ:
                                 outROOTFile.additional_branch["pi_temperature"][0] = piData["temperature"]
                                 outROOTFile.additional_branch["pi_humidity"][0] = piData["humidity"]
 
-                                Scope.WaitForTrigger()
+                                trigged = Scope.WaitForTrigger()
+
                                 #print("pass wait")
                                 outROOTFile.i_timestamp[0] = time.time()
                                 if event==0 or event%100==0:
@@ -224,10 +229,10 @@ class BetaDAQ:
                                 try:
                                     waveData = Scope.GetWaveform( self.configFile.EnableChannelList )
                                     #print(waveData)
-                                except:
+                                except Exception as e:
                                     event -= 1
                                     fail_counter += 1
-                                    print("fail getting data. {}".format(fail_counter))
+                                    print("fail getting data. {} because of : {}".format(fail_counter, e))
 
                                     try:
                                         Scope.Scope.reopen_resource()
@@ -270,10 +275,12 @@ class BetaDAQ:
 
 
                             except socket.error, e:
-                                ColorFormat.printColor("Catch exception: {daq_error}, This might be that you are resizing the terminal".format(daq_error=e), "y")
+                                event -= 1
+                                ColorFormat.printColor("Catch exception: {daq_error}, ".format(daq_error=e), "y")
                                 ColorFormat.printColor("Continue data taking.", "y")
                             except Exception as E:
-                                ColorFormat.printColor("Catch unknown exception: {daq_error}, This might be that you are resizing the terminal".format(daq_error=E), "y")
+                                event -= 1
+                                ColorFormat.printColor("Catch unknown exception: {daq_error}, ".format(daq_error=E), "y")
                                 ColorFormat.printColor("Continue data taking.", "y")
 
                                 '''
