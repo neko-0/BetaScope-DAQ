@@ -20,6 +20,8 @@ import multiprocessing as mp
 from general.Color_Printing import ColorFormat
 from utility.PI_TempSensor import PI_TempSensor
 
+INCR = 20
+
 class BetaDAQ:
     def __init__(self, configFileName ):
         ColorFormat.printColor("Using Beta daq Class ", "c")
@@ -163,6 +165,7 @@ class BetaDAQ:
                         outROOTFile.create_branch("bias", "D")
                         outROOTFile.additional_branch["bias"][0] = self.configFile.VoltageList[i]
 
+                        outROOTFile.create_branch("rate", "D")
                         outROOTFile.create_branch("ievent", "I")
                         outROOTFile.create_branch("cycle", "I") #recored the (temperature or repeated msmt) cycle number.
                         outROOTFile.additional_branch["cycle"][0] = cyc
@@ -206,7 +209,7 @@ class BetaDAQ:
 
                         while event < self.configFile.NumEvent:
                             try:
-                                event += 1
+                                event += INCR
                                 outROOTFile.additional_branch["ievent"][0] = event
 
                                 if tenney_chamber or tenney_chamber_mode1[0] :
@@ -221,7 +224,7 @@ class BetaDAQ:
 
                                 #print("pass wait")
                                 outROOTFile.i_timestamp[0] = time.time()
-                                if event==0 or event%100==0:
+                                if (event-INCR)==0 or (event+INCR)%100==0:
                                     current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
                                     fill_lowVolt(outROOTFile, lowVoltage_PS)
                                 outROOTFile.i_current[0] = current_100cycle
@@ -230,7 +233,7 @@ class BetaDAQ:
                                     waveData = Scope.GetWaveform( self.configFile.EnableChannelList )
                                     #print(waveData)
                                 except Exception as e:
-                                    event -= 1
+                                    event -= INCR
                                     fail_counter += 1
                                     print("fail getting data. {} because of : {}".format(fail_counter, e))
 
@@ -245,12 +248,12 @@ class BetaDAQ:
                                         continue
 
                                 if len(waveData) == 0:
-                                    event -= 1
+                                    event -= INCR
                                     print("empyt waveData...Please report this issue")
                                     continue
                                 elif len(waveData[0]) != len(self.configFile.EnableChannelList ):
-                                    event -= 1
-                                    print("waveData and channel mismatch, Please report this issue")
+                                    event -= INCR
+                                    print("waveData and channel mismatch {} {}, Please report this issue".format(len(waveData[0]), len(self.configFile.EnableChannelList) ))
                                     continue
                                 else:
                                     pass
@@ -264,11 +267,12 @@ class BetaDAQ:
                                 waveData = ""
                                 gc.collect()
 
-                                if(event%100==0):
+                                if((event+INCR)%(100)==0):
                                     daq_current_rate = 100.0/(time.time() - rate_checker)
+                                    outROOTFile.additional_branch["rate"][0] = daq_current_rate
                                     date = datetime.datetime.now()
                                     rate_checker = time.time()
-                                    print("[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(date=str(date), event=event, total=self.configFile.NumEvent, rate=daq_current_rate))
+                                    print("[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(date=str(date), event=event+INCR, total=self.configFile.NumEvent, rate=daq_current_rate))
                                     if daq_current_rate < 1.5:
                                         ColorFormat.printColor("The rate is less than 1. Performaing trigger check ", "c")
                                         PowerSupply.PowerSupply.checkTripped(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage)
@@ -293,7 +297,7 @@ class BetaDAQ:
                                 print(Scope.Scope.rm.visalib.sessions)
                                 print(Scope.Scope.inst.session)
                                 print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                #Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 2
+                                #Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 1
 
                                 '''
                                 for sec in Scope.Scope.rm.visalib.sessions:

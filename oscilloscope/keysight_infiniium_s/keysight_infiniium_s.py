@@ -19,15 +19,17 @@ class KeysightScope(object):
 
         self.ip_address = ip_address
         self.ip_addr = ip_address
-        self.rm = visa.ResourceManager("@py")
-        self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR", chunk_size=100000000)
+        self.rm = visa.ResourceManager("")
+        self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR", read_termination='\n', write_termination='\n', chunk_size=1024)
         #self.inst = self.rm.open_resource("USB0::10893::36935::MY57220130::0::INSTR")
-        self.inst.read_termination = '\n'
-        self.inst.write_termination = '\n'
+        #self.inst.read_termination = '"\n"'
+        #self.inst.write_termination = '\n'
         self.inst.clear()
         self.inst.write("*CLR")
         self.inst.write("*IDN?")
         idn = self.inst.read()
+
+        self.default_seg_count = 20
 
         #self.rm.visalib.set_buffer( self.inst.session, constants.VI_IO_IN_BUF, 20)
         #self.rm.visalib.set_buffer( self.inst.session, constants.VI_IO_OUT_BUF, 20)
@@ -41,7 +43,7 @@ class KeysightScope(object):
             print("\nUnable to connect to Keysight Infinium Scope.\n")
             return
 
-        self.inst.timeout = 3000
+        self.inst.timeout = 100000
 
     def close(self):
         self.inst.close()
@@ -112,21 +114,25 @@ class KeysightScope(object):
         '''
         self.inst.write(":*CLS")
         self.inst.write(":STOP")
-        self.inst.write(":WAV:FORM ASCii")
-        self.inst.write(":WAV:STR ON")
-        self.inst.write(":ACQ:MODE RTIMe")#RTIMe
+        self.inst.write(":ACQ:MODE SEGM")#RTIMe
+        self.inst.write("ACQ:SEGM:COUN {}".format(self.default_seg_count) )
         self.inst.write(":ACQ:BAND MAX")
         self.inst.write(":ACQ:INT OFF")
         self.inst.write(":ACQ:AVER OFF")
         self.inst.write(":ACQ:POIN:AUTO ON")
         self.inst.write(":ACQ:COMP 100")
+        self.inst.write(":WAV:FORM ASC")
+        self.inst.write(":WAV:STR ON")
         self.inst.write(":WAV:SEGM:ALL ON")
         self.inst.write("*SRE 7")
         self.inst.write("*SRE 5")
         self.inst.write("*SRE 0")
         self.inst.write(":RUN")
 
-        #self.inst.write(":SYST:GUI OFF")
+        self.inst.write(":SYST:GUI OFF")
+
+        self.seg_count = self.default_seg_count#int(self.inst.query(":WAV:SEGM:COUN?"))
+        print("seg count = {}".format(self.seg_count))
 
     def waiting_for_next_wave(self):
         #self.inst.write("*TRG")
@@ -142,10 +148,32 @@ class KeysightScope(object):
         #self.inst.query("*CLR;*OPC?")
         #self.inst.write(":SING")
         #self.inst.clear()
-        self.inst.write("*CLS")
-        self.inst.write(":DIG")
-        data  = self.inst.query("*OPC?")
-        print("Wait {}".format(data))
+        #self.inst.write("*CLS")
+        #self.inst.query("*OPC?")
+
+        '''
+        self.inst.write(":WMEM1:CLE")
+        self.inst.query("*OPC?")
+        self.inst.write(":WMEM2:CLE")
+        self.inst.query("*OPC?")
+        self.inst.write(":WMEM3:CLE")
+        self.inst.query("*OPC?")
+        '''
+
+        #self.inst.write(":DIG")
+        self.inst.clear()
+        self.inst.query("*CLS;*OPC?")
+        data  = self.inst.query(":DIG;*OPC?")
+        #self.inst.write(":STOP")
+        '''
+        self.inst.write(":WMEM1:SAVE CHAN1")
+        self.inst.query("*OPC?")
+        self.inst.write(":WMEM2:SAVE CHAN2")
+        self.inst.query("*OPC?")
+        self.inst.write(":WMEM3:SAVE CHAN3")
+        self.inst.query("*OPC?")
+        '''
+        #print("Wait {}".format(data))
         #self.inst.write(":STOP")
         return data
         #return self.inst.query("*OPC?")
@@ -173,31 +201,51 @@ class KeysightScope(object):
         #self.inst.write("WMEM{}:SAVE CHAN{}".format(channel, channel) )
         #self.inst.query("*OPC?")
         if isinstance(channelList, list):
-            output = []
+            t_output = []
+            v_output = []
+            split_level = 1
             for channel in channelList:
-                self.inst.write(":WAV:SOUR CHAN{}".format(channel))
-                #self.inst.write(":WAV:SOUR WMEM{}".format(channel))
-                d = self.inst.query("*OPC?").split(";")[0]
-                print("WAV SOUR ch{} {}".format(channel, d))
-                #self.inst.query(":DIG CHAN{};*OPC?".format(channel))
-                #self.inst.write(":CHAN{}:DISP ON".format(channel))
-                #v_data = self.inst.query(":WAV:DATA? 1,6000;*OPC?").split(";")[0]
-                self.inst.write(":WAV:DATA?")
-                print("sending opc")
-                self.inst.write(";*OPC?")
-                v_data = self.inst.read().split(";")[0]
-                #self.inst.write(":WMEM{}:CLE".format(channel))
-                #print(self.inst.query("*OPC?"))
-                #print(":WAV:DATA? {}".format(v_data))
-                v_data = [float(x) for x in v_data.split(",")[:-1]]
+                start_pt = 1
+                read_pnt = 0
+                self.inst.query(":WAV:SOUR CHAN{};*OPC?".format(channel))
+                npts = int(self.inst.query(":WAV:POIN?"))/split_level
+                read_pnt = npts
+                v_data = []
+                if self.seg_count < 1:
+                    my_v_data = self.inst.query(":WAV:DATA? {},{};*OPC?".format(start_pt, read_pnt) ).split(";")[0]
+                    my_v_data = [float(x) for x in my_v_data.split(",")[:-1]]
+                    v_data += my_v_data
+                else:
+                    for seg in range(self.seg_count*split_level):
+                        for my_split in range(split_level):
+                            if my_split != split_level-2:
+                                read_pnt = npts
+                            else:
+                                read_pnt = npts + 3
+                            my_v_data = self.inst.query(":WAV:DATA? {},{};*OPC?".format(start_pt, read_pnt) ).split(";")[0]
+                            my_v_data = [float(x) for x in my_v_data.split(",")[:-1]]
+                            v_data += my_v_data
+
+                            if my_split != split_level-2:
+                                start_pt += npts
+                            else:
+                                start_pt =+ npts + 3
+
+                #print(":WAV:DATA? {} {}".format(channel, len(v_data)))
                 t_data = []
-                output.append( [v_data, t_data])
+                t_output.append( t_data )
+                v_output.append( v_data )
 
             xorigin = self.inst.query(":WAV:XOR?;*OPC?").split(";")[0]
             xincrement = self.inst.query(":WAV:XINC?;*OPC?").split(";")[0]
-            for chan in output:
-                for i in range(len(chan[0])):
-                    chan[1].append(float(xorigin)+i*float(xincrement))
-            return output
+            last_t = float(xorigin)
+            for ch, chan in enumerate(v_output):
+                for i in range(len(chan)):
+                    #t_output[ch].append(last_t+i*float(xincrement))
+                    t_output[ch].append(last_t+float(xincrement))
+                    last_t += float(xincrement)
+
+            #print(len(output))
+            return [t_output, v_output]
         else:
-            self.get_ascii_waveform_remote([channelList])
+            return self.get_ascii_waveform_remote([channelList])
