@@ -3,7 +3,7 @@ from DAQConfigReader import *
 from oscilloscope.scope_producer import *
 from power_supply.power_producer import *
 
-from Data_Path_Setup import *
+from utility.Data_Path_Setup import *
 from file_io.ROOTClass import *
 from general.general import *
 from agilent_e3646a.e3646a_ps import *

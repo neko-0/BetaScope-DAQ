@@ -9,7 +9,7 @@ import os
 class Password:
 
     def __init__(self):
-        self.class_name = "Password"
+        self._class_name = "Password"
 
     @staticmethod
     def generate_user(username):
@@ -31,10 +31,10 @@ class Password:
                     stored_pw = f.read()
                     if decode_pw == stored_pw:
                         print("Okay")
-                        return True
+                        return (user, True)
                     else:
                         print("error re-try")
                         user = ""
             else:
                 print("cannot find login file.")
-                return False
+                return (user, False)
