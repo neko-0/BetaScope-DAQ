@@ -165,6 +165,9 @@ class BetaDAQ:
                         outROOTFile.create_branch("bias", "D")
                         outROOTFile.additional_branch["bias"][0] = self.configFile.VoltageList[i]
 
+                        outROOTFile.create_branch("mon_dut_bias", "D")
+                        outROOTFile.create_branch("mon_trig_bias", "D")
+
                         outROOTFile.create_branch("rate", "D")
                         outROOTFile.create_branch("ievent", "I")
                         outROOTFile.create_branch("cycle", "I") #recored the (temperature or repeated msmt) cycle number.
@@ -226,6 +229,8 @@ class BetaDAQ:
                                 outROOTFile.i_timestamp[0] = time.time()
                                 if (event-INCR)==0 or (event+INCR)%100==0:
                                     current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
+                                    outROOTFile.additional_branch["mon_dut_bias"][0] =  PowerSupply.VoltageReader( self.configFile.PSDUTChannel )
+                                    outROOTFile.additional_branch["mon_trig_bias"][0] =  PowerSupply.VoltageReader( self.configFile.PSTriggerChannel )
                                     fill_lowVolt(outROOTFile, lowVoltage_PS)
                                 outROOTFile.i_current[0] = current_100cycle
                                 waveData = ""

@@ -40,6 +40,12 @@ class PowerSupplyProducer:
                 return CurrentReader
             self.CurrentReader = Produce_CurrentReader()
 
+            def Produce_VoltageReader():
+                def VoltageReader( PS_Channel ):
+                    return self.PowerSupply.voltage_monitor_value( PS_Channel, 0)
+                return VoltageReader
+            self.CurrentReader = Produce_VoltageReader()
+
             def Produce_Close():
                 def Close():
                     return self.PowerSupply.close("ALL")
