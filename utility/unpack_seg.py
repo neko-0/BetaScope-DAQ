@@ -17,6 +17,8 @@ def unpack_seg( ifile_name, ch_list, num_pts, seg_count):
     channels_t = {}
     temperature = array("d",[0])
     humidity = array("d",[0])
+    pi_temperature = array("d",[0])
+    pi_humidity = array("d",[0])
     i_timestamp = array("d",[0])
     i_current = array("d",[0])
     ievent = array("i",[0])
@@ -28,14 +30,24 @@ def unpack_seg( ifile_name, ch_list, num_pts, seg_count):
         otree.Branch("t{}".format(ch), channels_t[ch] )
     otree.Branch("temperature", temperature, "temperature/D")
     otree.Branch("humidity", humidity, "humidity/D")
+    otree.Branch("pi_temperature", temperature, "pi_temperature/D")
+    otree.Branch("pi_humidity", humidity, "pi_humidity/D")
     otree.Branch("i_timestamp", i_timestamp, "i_timestamp/D")
     otree.Branch("i_current", i_current, "i_current/D")
     otree.Branch("ievent", ievent, "ievent/I")
     otree.Branch("cycle", cycle, "cycle/I")
 
     for ientry, entry in enumerate(itree):
-        temperature[0] = entry.temperature
-        humidity[0] = entry.humidity
+        try:
+            temperature[0] = entry.temperature
+            pi_humidity[0] = entry.humidity
+        except:
+            pass
+        try:
+            pi_temperature[0] = entry.pi_temperature
+            pi_humidity[0] = entry.pi_humidity
+        except:
+            pass
         i_timestamp[0] = entry.i_timestamp
         i_current[0] = entry.i_current
         ievent[0] = entry.ievent

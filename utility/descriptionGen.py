@@ -2,12 +2,14 @@
 for generating description files
 '''
 from Password import Password
+from Data_Path_Setup import Check_File
+import datetime
 
 def CreateDescription( RunNumber ):
     fileName = "Sr_Run_" + str(RunNumber) + "_Description.ini"
     fileExist = Check_File(fileName)
     date = datetime.datetime.now()
-    user = Password.check_login()(0)
+    user = Password.check_login()[0]
     if not fileExist:
         with open(fileName, "w") as f:
             f.write("[Run_Description] \n")
@@ -41,5 +43,5 @@ def CreateDescription( RunNumber ):
             f.write("Temperature = \n")
 
             f.write("Purpose = \n")
-            
+
             f.write("Addition_Notes = \n")

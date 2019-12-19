@@ -10,6 +10,7 @@ class PowerSupplyProducer:
         self.ConfirmVoltage = ""
         self.SetVoltage = ""
         self.CurrentReader = ""
+        self.VoltageReader = ""
         self.Close = ""
 
         if True:
@@ -44,7 +45,7 @@ class PowerSupplyProducer:
                 def VoltageReader( PS_Channel ):
                     return self.PowerSupply.voltage_monitor_value( PS_Channel, 0)
                 return VoltageReader
-            self.CurrentReader = Produce_VoltageReader()
+            self.VoltageReader = Produce_VoltageReader()
 
             def Produce_Close():
                 def Close():

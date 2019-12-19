@@ -42,6 +42,7 @@ class SimpleCaenPowerSupply(object):
                 self.inst.clear()
         #self.inst.write_termination("\r\n")
         #self.inst.read_termination("\r\n")
+
         idn = self.inst.query("$BD:"+xx+",CMD:MON,PAR:BDNAME")
         remote_status = self.check_remote_status()
         if "DT1471ET" in idn:

@@ -115,6 +115,7 @@ class KeysightScope(object):
         self.inst.write(":*CLS")
         self.inst.write(":STOP")
         self.inst.write(":ACQ:MODE SEGM")#RTIMe
+        #self.inst.write(":ACQ:MODE RTIMe")#RTIMe
         self.inst.write("ACQ:SEGM:COUN {}".format(self.default_seg_count) )
         self.inst.write(":ACQ:BAND MAX")
         self.inst.write(":ACQ:INT OFF")
@@ -236,8 +237,9 @@ class KeysightScope(object):
                 t_output.append( t_data )
                 v_output.append( v_data )
 
-            xorigin = self.inst.query(":WAV:XOR?;*OPC?").split(";")[0]
-            xincrement = self.inst.query(":WAV:XINC?;*OPC?").split(";")[0]
+            xorigin = self.inst.query(":WAV:XOR?;*OPC?".format(channel)).split(";")[0]
+            xincrement = self.inst.query(":WAV:XINC?;*OPC?".format(channel)).split(";")[0]
+            #print self.inst.query(":WAV:XOR?;*OPC?".format(channel)), self.inst.query(":WAV:XINC?;*OPC?".format(channel)), xincrement
             last_t = float(xorigin)
             for ch, chan in enumerate(v_output):
                 for i in range(len(chan)):

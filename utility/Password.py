@@ -23,7 +23,7 @@ class Password:
         user = ""
         while user=="":
             user = str(raw_input("USER NAME:"))
-            user_pw_file = "/home/yuzhan/DAQForProduction/{username}_daqPW.dat".format(username=user)
+            user_pw_file = "/home/yuzhan/DAQForProduction/user_data/{username}_daqPW.dat".format(username=user)
             if os.path.exists(user_pw_file):
                 with open(user_pw_file, "rb") as f:
                     pw = getpass.getpass("Please enter your password: \n")
