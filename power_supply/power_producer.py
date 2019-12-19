@@ -1,7 +1,8 @@
 from caen_ps.CAEN_PS import *
+from keithley.core import Keithley
 
 class PowerSupplyProducer:
-    def __init__(self, configFile ):
+    def __init__(self, configFile, ps_name="Caen"):
         #configParser = DAQConfig()
         #self._config = configParser.ReadDAQConfig( configFileName )
         self._config = configFile
@@ -13,7 +14,7 @@ class PowerSupplyProducer:
         self.VoltageReader = ""
         self.Close = ""
 
-        if True:
+        if ps_name=="Caen":
             print("Caen power supply is produced")
             self.PowerSupply = SimpleCaenPowerSupply()
             self.PowerSupply.Set_Compliance( self._config.PSSoftwareComplicance/2.0, self._config.PSSoftwareComplicance/5.0)
@@ -50,5 +51,39 @@ class PowerSupplyProducer:
             def Produce_Close():
                 def Close():
                     return self.PowerSupply.close("ALL")
+                return Close
+            self.Close = Produce_Close()
+
+        elif ps_name=="Keithley":
+            print("Keithley power supply is produced")
+            self.PowerSupply = Keithley()
+
+            def Produce_ConfirmVoltage():
+                def ConfirmVoltage(channel, target_volts):
+                    return self.PowerSupply.confirm_voltage(target_volts)
+                return ConfirmVoltage
+            self.ConfirmVoltage = Produce_ConfirmVoltage()
+
+            def Produce_SetVoltage():
+                def SetVoltage( PS_Channel, TargetVoltage, maxI=1.2 ):
+                    self.PowerSupply.set_voltage(TargetVoltage)
+                return SetVoltage
+            self.SetVoltage = Produce_SetVoltage()
+
+            def Produce_CurrentReader():
+                def CurrentReader( PS_Channel ):
+                    return self.PowerSupply.current_monitor_value()
+                return CurrentReader
+            self.CurrentReader = Produce_CurrentReader()
+
+            def Produce_VoltageReader():
+                def VoltageReader( PS_Channel ):
+                    return self.PowerSupply.voltage_monitor_value()
+                return VoltageReader
+            self.VoltageReader = Produce_VoltageReader()
+
+            def Produce_Close():
+                def Close():
+                    return self.PowerSupply.close()
                 return Close
             self.Close = Produce_Close()

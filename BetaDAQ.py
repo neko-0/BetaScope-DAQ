@@ -95,7 +95,8 @@ class BetaDAQ:
             #creating instruments for the DAQ
             piSensor = PI_TempSensor()
             Scope = ScopeProducer( self.configFile )
-            PowerSupply = PowerSupplyProducer( self.configFile )
+            which_ps = raw_input("\n Which power suppler?[Caen/Keithley]: ")
+            PowerSupply = PowerSupplyProducer( self.configFile, which_ps)
 
             PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
 

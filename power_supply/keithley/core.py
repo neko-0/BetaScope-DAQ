@@ -253,7 +253,26 @@ class Keithley(object):
             self.ramp(current_volt, 0, step=1, delay=0.1, fast=True)
 
     def get_v(self):
-        return self.smua.source.levelv
+        return self.smua.measure.v()
+
+    def get_i(self):
+        return self.smua.measure.i()
+
+    def confirm_voltage(self, target_volts):
+        voltage = self.smua.measure.v()
+        if abs(float(voltage) - target_volts) < 1.5:
+            return True
+        else:
+            return False
+
+    def current_monitor_value(self):
+        return self.smua.measure.i()
+
+    def voltage_monitor_value(self):
+        return self.smua.measure.v()
+
+    def set_voltage(self, end):
+        self.ramp(self.smua.source.levelv, end)
 
     def ramp(self, start, end, step=5, delay=1, fast=False):
         if start < end:
