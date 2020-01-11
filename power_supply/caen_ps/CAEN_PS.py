@@ -57,10 +57,7 @@ class SimpleCaenPowerSupply(object):
         log.info("Checking remote status...")
         if "LOCAL" in remote_status:
             log.critical(
-                ColorFormat.yellow
-                + "Remote access is closed "
-                + ColorFormat.end
-                + ", Press ENTER to contitue."
+                "Remote access is closed, Press ENTER to contitue."
             )
             input()
         else:
