@@ -1,6 +1,7 @@
-'''
+"""
 Color formating for the 'print' method
-'''
+"""
+
 
 class ColorFormat:
     green = "\033[92m"
@@ -12,12 +13,12 @@ class ColorFormat:
     @staticmethod
     def printColor(itext, color="c"):
         if "c" in color:
-            print( ColorFormat.cyan + str(itext) + ColorFormat.end)
+            print(ColorFormat.cyan + str(itext) + ColorFormat.end)
         elif "g" in color:
-            print( ColorFormat.green + str(itext) + ColorFormat.end)
+            print(ColorFormat.green + str(itext) + ColorFormat.end)
         elif "m" in color:
-            print( ColorFormat.magenta + str(itext) + ColorFormat.end)
+            print(ColorFormat.magenta + str(itext) + ColorFormat.end)
         elif "y" in color:
-            print( ColorFormat.yellow + str(itext) + ColorFormat.end)
+            print(ColorFormat.yellow + str(itext) + ColorFormat.end)
         else:
             print(itext)

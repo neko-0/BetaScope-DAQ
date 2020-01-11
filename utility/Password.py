@@ -1,13 +1,13 @@
-'''
+"""
 a simple user-password class
-'''
+"""
 
 from hashlib import sha256
 import getpass
 import os
 
-class Password:
 
+class Password:
     def __init__(self):
         self._class_name = "Password"
 
@@ -21,9 +21,11 @@ class Password:
     @staticmethod
     def check_login():
         user = ""
-        while user=="":
-            user = str(raw_input("USER NAME:"))
-            user_pw_file = "/home/yuzhan/DAQForProduction/user_data/{username}_daqPW.dat".format(username=user)
+        while user == "":
+            user = str(input("USER NAME:"))
+            user_pw_file = "/home/yuzhan/DAQForProduction/user_data/{username}_daqPW.dat".format(
+                username=user
+            )
             if os.path.exists(user_pw_file):
                 with open(user_pw_file, "rb") as f:
                     pw = getpass.getpass("Please enter your password: \n")

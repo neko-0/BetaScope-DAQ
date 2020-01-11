@@ -1,36 +1,19 @@
-from BetaDAQ import *
-from general.general import *
-from utility import logger
-import subprocess
-import sys
-import os
+import logging, coloredlogs
 
-editor = GetEditor("gedit")
+logging.basicConfig()
+log = logging.getLogger(__name__)
+coloredlogs.install(level="DEBUG", logger=log)
+
+from BetaDAQ import BetaDAQ
 
 if __name__ == "__main__":
 
-    #create log file
-    sys.stdout = logger.Logger()
+    # create log file
+    # sys.stdout = logger.Logger()
 
-    print(" \n BetaScope DAQ is created \n")
+    log.info("BetaScope DAQ is created")
 
-    daq_pid = os.getpid()
-    with open("user_data/daq_pid.log", "w") as log:
-        log.write("pid = {}".format(daq_pid) )
+    DAQ = BetaDAQ()
+    DAQ.BetaMeas()
 
-    mode = ["beta", "ts"]
-
-    print("\n *** Open Configuration file *** \n")
-    subprocess.call([editor, "BetaDAQ_Config.ini"])
-
-    DAQ = BetaDAQ("BetaDAQ_Config.ini")
-
-    runningMode = raw_input("\nWhich Measurement?[beta(Beta Measurement), ts(Threshold Scan)]: ")
-    if "beta" in runningMode:
-        DAQ.BetaMeas()
-    elif "ts" in runningMode:
-        DAQ.ThreshodVsPeriod()
-    else:
-        print("Invalid running Mode (please enter 'beta' or 'ts')")
-
-    print("DAQ is closed")
+    log.info("DAQ is closed")

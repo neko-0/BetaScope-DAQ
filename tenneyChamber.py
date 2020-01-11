@@ -7,14 +7,14 @@ import multiprocessing as mp
 if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--task", dest="job_type", nargs="?", type=str )
+    argparser.add_argument("--task", dest="job_type", nargs="?", type=str)
 
     argv = argparser.parse_args()
 
     if "record" in argv.job_type:
         f4t = f4t_controller.F4T_Controller()
 
-        '''
+        """
         temperature_plot = generic_plot.Generic_Plot("Time", "Temperature")
         humidity_plot = generic_plot.Generic_Plot("Time", "Humidity")
 
@@ -43,17 +43,17 @@ if __name__ == "__main__":
         humiPlot_proc.join()
         tempPlot_proc.join()
         log_proc.join()
-        '''
+        """
         f4t.log_temp_humi_to_file()
 
     if "set_temp=" in argv.job_type:
-         f4t = f4t_controller.F4T_Controller()
-         set_value = argv.job_type.split("set_temp=")[1]
-         f4t.set_temperature( set_value )
+        f4t = f4t_controller.F4T_Controller()
+        set_value = argv.job_type.split("set_temp=")[1]
+        f4t.set_temperature(set_value)
 
     if "get_temp" in argv.job_type:
         f4t = f4t_controller.F4T_Controller()
-        print( f4t.get_temperature() )
+        print(f4t.get_temperature())
 
     if "set_ramp_rate" in argv.job_type:
         f4t = f4t_controller.F4T_Controller()

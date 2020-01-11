@@ -1,21 +1,22 @@
-'''
+"""
 for generating description files
-'''
-from Password import Password
-from Data_Path_Setup import Check_File
+"""
+from .Password import Password
+from .file_dir import FileDir
 import datetime
 
-def CreateDescription( RunNumber ):
+
+def CreateDescription(RunNumber):
     fileName = "Sr_Run_" + str(RunNumber) + "_Description.ini"
-    fileExist = Check_File(fileName)
+    fileExist = FileDir.check_file(fileName)
     date = datetime.datetime.now()
     user = Password.check_login()[0]
     if not fileExist:
         with open(fileName, "w") as f:
             f.write("[Run_Description] \n")
             f.write("#feel free to add anything that you think is needed \n")
-            f.write("User = {username} \n".format(username=user) )
-            f.write("Date = %s \n"%str(date) )
+            f.write("User = {username} \n".format(username=user))
+            f.write("Date = %s \n" % str(date))
             f.write("Run_Number = \n")
 
             f.write("DUT_Manufacture = \n")

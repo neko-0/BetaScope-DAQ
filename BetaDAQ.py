@@ -1,14 +1,28 @@
-from DAQConfigReader import *
+import logging, coloredlogs
 
-from oscilloscope.scope_producer import *
-from power_supply.power_producer import *
+logging.basicConfig()
+log = logging.getLogger(__name__)
+coloredlogs.install(level="INFO", logger=log)
 
-from utility.Data_Path_Setup import *
-from utility.descriptionGen import CreateDescription
-from file_io.ROOTClass import *
-from general.general import *
-from agilent_e3646a.e3646a_ps import *
-#import general
+
+from daq_setting import DAQConfigReader
+
+from utility.file_dir import FileDir
+from utility.description import CreateDescription
+from utility.PI_TempSensor import PI_TempSensor
+
+from file_io import ROOTFileOutput
+
+from oscilloscope.scope_producer import ScopeProducer
+from power_supply import PowerSupplyProducer
+from power_supply import E3646A_PS
+
+from tenney_chamber import F4T_Controller
+
+from general import GetEditor
+
+
+# import general
 import socket
 import gc
 import datetime
@@ -16,377 +30,507 @@ import time
 import subprocess
 import shutil
 import numpy as np
-from tenney_chamber import f4t_controller
-import multiprocessing as mp
-from general.Color_Printing import ColorFormat
-from utility.PI_TempSensor import PI_TempSensor
 
-INCR = 20
+
+def temperature_compare(f4t, pi_sensor, target_temp, diff=2):
+    pi_temp = pi_sensor.get_temperature()
+    my_target_temp = target_temp
+    okay = False
+    while True:
+        if okay:
+            break
+        if abs(pi_temp - target_temp) <= diff:
+            log.info("temperature is stable now {}".format(target_temp))
+            for i in range(600):
+                time.sleep(1)
+                if i % 60 == 0:
+                    log.info("wait for checking again {}/600".format(i))
+            if abs(pi_temp - target_temp) <= diff:
+                okay = True
+            else:
+                continue
+        else:
+            log.info(
+                "temperature mismatch pi:{} now and the target:{}".format(
+                    pi_temp, target_temp
+                )
+            )
+            if pi_temp < target_temp:
+                my_target_temp += 1
+                f4t.set_temperature(my_target_temp)
+                f4t.wait_temperature(my_target_temp)
+            else:
+                my_target_temp -= 1
+                f4t.set_temperature(my_target_temp)
+                f4t.wait_temperature(my_target_temp)
+
 
 class BetaDAQ:
-    def __init__(self, configFileName ):
-        ColorFormat.printColor("Using Beta daq Class ", "c")
-        self.configFile = DAQConfig()
-        self.configFile.ReadDAQConfig( configFileName )
+    def __init__(self):
+        log.info("initializing {}".format(self.__class__.__name__))
+        self.config_file = DAQConfigReader.open()
+        self.instruments = {
+            "chamber": None,
+            "scope": None,
+            "hv_ps": None,
+            "lv_ps": None,
+            "pi_sensor": None,
+        }
 
-    def BetaMeas(self ):
-        ColorFormat.printColor("Using Beta Measurement scripts", "y")
-        MASTER_PATH = self.configFile.DAQMasterDir
-        PARENT_DIR = self.configFile.DAQDataDir
-        Setup_Data_Folder( self.configFile.DAQMasterDir, self.configFile.DAQDataDir, self.configFile.RunNumber )
-        CURRENT_FILE = Setup_Imon_File( self.configFile.RunNumber )
-        CURRENT_FILE = Check_Imon_File( CURRENT_FILE )
+    # ===========================================================================
+    # ===========================================================================
+    def setup_dir(self):
+        FileDir.setup_data_folder(
+            self.config_file.config.file_setting.master_dir,
+            self.config_file.config.file_setting.output_dir,
+            self.config_file.config.file_setting.run_number,
+        )
+        self.current_mon_file = open(
+            FileDir.check_current_mon_file(
+                FileDir.setup_current_mon_file(
+                    self.config_file.config.file_setting.run_number
+                )
+            ),
+            "w",
+        )
 
-        current_file = open(CURRENT_FILE, "w")
-
-        descriptionFile = raw_input("\n Create description file?[y/n]: ")
-        if "y" in descriptionFile:
+    # ===========================================================================
+    # ===========================================================================
+    def create_description_file(self):
+        log.warning("Create description file?[y/n]")
+        yes_no = input()
+        if "y" in yes_no or "Y" in yes_no:
             editor = GetEditor("gedit")
-            CreateDescription( self.configFile.RunNumber )
-            subprocess.call([editor, "Sr_Run_" + str(self.configFile.RunNumber) + "_Description.ini"])
+            CreateDescription(self.config_file.config.file_setting.run_number)
+            subprocess.call(
+                [
+                    editor,
+                    "Sr_Run_"
+                    + str(self.config_file.config.file_setting.run_number)
+                    + "_Description.ini",
+                ]
+            )
         else:
             pass
-        shutil.copy("Sr_Run_" + str(self.configFile.RunNumber) + "_Description.ini",  "/media/mnt/BigHD/DAQlog/")
+        shutil.copy(
+            "Sr_Run_"
+            + str(self.config_file.config.file_setting.run_number)
+            + "_Description.ini",
+            self.config_file.config.file_setting.log_dir,
+        )
 
-        tenney_chamber = self.configFile.tenney_chamber
-        tenney_chamber_mode1 = self.configFile.tenney_chamber_mode1
+    # ===========================================================================
+    # ===========================================================================
+    def load_instruments(self):
+        self.instruments["pi_sensor"] = PI_TempSensor()
+        if self.config_file.config.chamber_setting.name == "new_tenney":
+            self.instruments["chamber"] = F4T_Controller()
+        self.instruments["scope"] = ScopeProducer(self.config_file.config)
+        self.instruments["hv_ps"] = PowerSupplyProducer(self.config_file.config)
+        self.instruments["lv_ps"] = E3646A_PS()
 
-        f4t = ""
-        temperature_list = [0]
-        trigger_voltage_list = [0]
-        if tenney_chamber:
-            f4t = f4t_controller.F4T_Controller()
-            temperature_list = self.configFile.temperature_list
-            trigger_voltage_list = self.configFile.trigger_voltage_list_from_chamber
-        elif tenney_chamber_mode1[0]:
-            f4t = f4t_controller.F4T_Controller()
+    # ===========================================================================
+    # ===========================================================================
+    def create_output_file(self, dataFileName, dut_bias, cycle):
+        outROOTFile = ROOTFileOutput(
+            dataFileName, self.config_file.config.scope_setting.enable_channels
+        )
+
+        if self.instruments["chamber"].is_opened:
+            outROOTFile.create_branch("temperature", "D")
+            outROOTFile.create_branch("humidity", "D")
+
+        if not self.instruments["pi_sensor"] is None:
+            outROOTFile.create_branch("pi_temperature", "D")
+            outROOTFile.create_branch("pi_humidity", "D")
+
+        if "lecroy" in self.config_file.config.scope_setting.name:
+            for ch in self.config_file.config.scope_setting.enable_channels:
+                outROOTFile.create_branch("verScale{}".format(ch), "D")
+                outROOTFile.create_branch("horScale{}".format(ch), "D")
+                verScale = float(
+                    self.instruments["scope"]
+                    .scope._query("C{}:VDIV?".format(ch))
+                    .split("VDIV ")[1]
+                    .split(" ")[0]
+                )
+                horScale = float(
+                    self.instruments["scope"]
+                    .scope._query("TDIV?")
+                    .split("TDIV ")[1]
+                    .split(" ")[0]
+                )
+                log.info("Ver scale ch{}: {}".format(ch, verScale))
+                log.info("Hor scale ch{}: {}".format(ch, horScale))
+                outROOTFile.additional_branch["verScale{}".format(ch)][0] = verScale
+                outROOTFile.additional_branch["horScale{}".format(ch)][0] = horScale
+
+        outROOTFile.create_branch("bias", "D")
+        outROOTFile.additional_branch["bias"][0] = dut_bias
+
+        outROOTFile.create_branch("mon_dut_bias", "D")
+        outROOTFile.create_branch("mon_trig_bias", "D")
+
+        outROOTFile.create_branch("rate", "D")
+        outROOTFile.create_branch("ievent", "I")
+        outROOTFile.create_branch(
+            "cycle", "I"
+        )  # recored the (temperature or repeated msmt) cycle number.
+        outROOTFile.additional_branch["cycle"][0] = cycle
+
+        outROOTFile.create_branch("reverse_scan", "I")
+        if self.config_file.config.dut_setting.reverse_scan:
+            outROOTFile.additional_branch["reverse_scan"][0] = 1
         else:
-            pass
-        #if self.configFile.show_chamber_status:
-            #proc = mp.Process(target=f4t.log_temp_humi_to_file())
-            #proc.start()
+            outROOTFile.additional_branch["reverse_scan"][0] = 0
 
-        for tempIndex in range(len(temperature_list)):
+        if self.instruments["lv_ps"].is_opened:
+            outROOTFile.create_branch("lowVoltPS_V_ch1", "D")
+            outROOTFile.create_branch("lowVoltPS_C_ch1", "D")
+            outROOTFile.create_branch("lowVoltPS_V_ch2", "D")
+            outROOTFile.create_branch("lowVoltPS_C_ch2", "D")
 
-            current_set_temperature = 20
+        return outROOTFile
 
-            _current_time = time.time()
+    def fill_lowVolt(self, outROOTFile):
+        if self.instruments["lv_ps"].is_opened:
+            lowVoltage_PS_Ch1 = self.instruments["lv_ps"].read_voltageCurrent(1)
+            lowVoltage_PS_Ch2 = self.instruments["lv_ps"].read_voltageCurrent(2)
+            outROOTFile.additional_branch["lowVoltPS_V_ch1"][0] = lowVoltage_PS_Ch1[0]
+            outROOTFile.additional_branch["lowVoltPS_C_ch1"][0] = lowVoltage_PS_Ch1[1]
+            outROOTFile.additional_branch["lowVoltPS_V_ch2"][0] = lowVoltage_PS_Ch2[0]
+            outROOTFile.additional_branch["lowVoltPS_C_ch2"][0] = lowVoltage_PS_Ch2[1]
 
-            if tenney_chamber:
-                self.configFile.TriggerVoltage = trigger_voltage_list[tempIndex]
-                f4t.set_temperature( temperature_list[tempIndex] )
-                f4t.check_temperature( temperature_list[tempIndex] )
-                #time_sender = progess_bar(2)
-                current_set_temperature = temperature_list[tempIndex]
-            elif tenney_chamber_mode1[0]:
-                f4t.set_temperature( tenney_chamber_mode1[1] )
-                f4t.check_temperature( tenney_chamber_mode1[1] )
-                current_set_temperature = tenney_chamber_mode1[1]
+    # ==========================================================================
+    # ==========================================================================
+    def _core(self, outROOTFile, nevent, temperature=None):
+
+        for name, inst in self.instruments.items():
+            if not inst is None:
+                log.info("{} looks fine.".format(name))
             else:
-                pass
+                log.critical("something wrong with {}".format(name))
 
-            #wait for temperature to be stable
-            while((time.time()-_current_time) <= self.configFile.tenney_chamber_wait_time):
-                duration = time.time()-_current_time
-                if duration%10==0:
-                    #time_sender("Chamber is waiting: ", "% (/%)"%(duration, self.configFile.tenney_chamber_wait_time))
-                    print(duration)
+        start_time = time.time()
+        rate_checker = time.time()
+        daq_current_rate = 0
 
-            #creating instruments for the DAQ
-            piSensor = PI_TempSensor()
-            Scope = ScopeProducer( self.configFile )
-            which_ps = raw_input("\n Which power suppler?[Caen/Keithley]: ")
-            PowerSupply = PowerSupplyProducer( self.configFile, which_ps)
+        event = 0
+        fail_counter = 0
 
-            PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
+        current_100cycle = self.instruments["hv_ps"].CurrentReader(
+            self.config_file.config.dut_setting.ps_ch
+        )
 
-            if tenney_chamber:
+        while event < nevent:
+            try:
+                event += self.config_file.config.scope_setting.segment_count
+                outROOTFile.additional_branch["ievent"][0] = event
 
-                stepSize = 10
-                numIncre = (self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-self.configFile.dut_min_voltage_from_chamber)/stepSize
-                self.configFile.VoltageList = []
-                self.configFile.FileNameList = []
-                for aa in range(numIncre):
-                    newVolt = self.configFile.dut_max_voltage_list_from_chamber[tempIndex]-aa*stepSize
-                    if newVolt > self.configFile.dut_min_voltage_from_chamber:
-                        self.configFile.VoltageList.append(newVolt)
-                        self.configFile.FileNameList.append( "Sr_Run%s_%sV_trig%sV"%(self.configFile.RunNumber, newVolt, self.configFile.TriggerVoltage )  )
-                    else:
-                        self.configFile.VoltageList.append(self.configFile.dut_min_voltage_from_chamber)
-                        self.configFile.FileNameList.append( "Sr_Run%s_%sV_trig%sV"%(self.configFile.RunNumber, newVolt, self.configFile.TriggerVoltage)  )
+                if self.instruments["chamber"].is_opened:
+                    outROOTFile.additional_branch["temperature"][0] = self.instruments[
+                        "chamber"
+                    ].get_temperature()
+
+                piData = self.instruments["pi_sensor"].getData()
+                outROOTFile.additional_branch["pi_temperature"][0] = piData[
+                    "temperature"
+                ]
+                outROOTFile.additional_branch["pi_humidity"][0] = piData["humidity"]
+
+                self.instruments["scope"].WaitForTrigger()
+
+                outROOTFile.i_timestamp[0] = time.time()
+                if (
+                    (event - self.config_file.config.scope_setting.segment_count) == 0
+                    or (event + self.config_file.config.scope_setting.segment_count)
+                    % 100
+                    == 0
+                ):
+                    current_100cycle = self.instruments["hv_ps"].CurrentReader(
+                        self.config_file.config.dut_setting.ps_ch
+                    )
+                    outROOTFile.additional_branch["mon_dut_bias"][0] = self.instruments[
+                        "hv_ps"
+                    ].VoltageReader(self.config_file.config.dut_setting.ps_ch)
+                    outROOTFile.additional_branch["mon_trig_bias"][
+                        0
+                    ] = self.instruments["hv_ps"].VoltageReader(
+                        self.config_file.config.trigger_setting.ps_ch
+                    )
+                    self.fill_lowVolt(outROOTFile)
+                outROOTFile.i_current[0] = current_100cycle
+                waveData = ""
+                try:
+                    waveData = self.instruments["scope"].GetWaveform(
+                        self.config_file.config.scope_setting.enable_channels
+                    )
+                    # print(waveData)
+                except Exception as e:
+                    event -= self.config_file.config.scope_setting.segment_count
+                    fail_counter += 1
+                    log.critical(
+                        "fail getting data. {} because of : {}".format(fail_counter, e)
+                    )
+
+                    try:
+                        self.instruments["scope"].scope.reopen_resource()
+                    except Exception as err:
+                        log.critical(err)
+
+                    if fail_counter == 5000:
                         break
-                self.configFile.FileNameList.reverse()
-                self.configFile.VoltageList.reverse()
-                ColorFormat.printColor("DUT voltage is replaced with \n %s"%(self.configFile.VoltageList), "y")
-                ColorFormat.printColor("file list is replaced with \n %s"%(self.configFile.FileNameList), "y")
-
-            for cyc in range(self.configFile.CYCLE):
-
-                if self.configFile.REVERSE_BIAS_SCAN:
-                    self.configFile.VoltageList.reverse()
-                    self.configFile.FileNameList.reverse()
-
-                for i in range(len(self.configFile.FileNameList)):
-                    failSetVoltage = PowerSupply.SetVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i], self.configFile.dut_max_current_list_from_chamber[tempIndex] )
-                    if failSetVoltage == 1: continue
-                    V_Check = PowerSupply.ConfirmVoltage( self.configFile.PSDUTChannel, self.configFile.VoltageList[i] )
-                    if V_Check:
-
-                        dataFileName = self.configFile.FileNameList[i]+".root"
-                        if "_{}V_trig".format(self.configFile.VoltageList[i]) in dataFileName:
-                            pass
-                        else:
-                            ColorFormat.printColor("Voltage and output file name dose not match!!", "y")
-
-                        if tenney_chamber:
-                            dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(temperature_list[tempIndex])
-                        elif tenney_chamber_mode1[0]:
-                            dataFileName = dataFileName.split(".root")[0]+"_temp%s.root"%(tenney_chamber_mode1[1])
-                        else:
-                            pass
-                        outROOTFile = ROOTFileOutput(dataFileName, self.configFile.EnableChannelList )
-
-                        if tenney_chamber or tenney_chamber_mode1[0]:
-                            outROOTFile.create_branch("temperature", "D")
-                            outROOTFile.create_branch("humidity", "D")
-
-                        outROOTFile.create_branch("pi_temperature", "D")
-                        outROOTFile.create_branch("pi_humidity", "D")
-
-                        if "lecroy" in Scope.name:
-                            for chNum in self.configFile.EnableChannelList:
-                                outROOTFile.create_branch("verScale%s"%chNum, "D" )
-                                outROOTFile.create_branch("horScale%s"%chNum, "D" )
-                                verScale = float(Scope._query("C%s:VDIV?"%chNum).split("VDIV ")[1].split(" ")[0])
-                                horScale = float(Scope._query("TDIV?").split("TDIV ")[1].split(" ")[0])
-                                print("Ver scale ch%s: %s"%(chNum,verScale))
-                                print("Hor scale ch%s: %s"%(chNum,horScale))
-                                outROOTFile.additional_branch["verScale%s"%chNum][0] = verScale
-                                outROOTFile.additional_branch["horScale%s"%chNum][0] = horScale
-
-                        outROOTFile.create_branch("bias", "D")
-                        outROOTFile.additional_branch["bias"][0] = self.configFile.VoltageList[i]
-
-                        outROOTFile.create_branch("mon_dut_bias", "D")
-                        outROOTFile.create_branch("mon_trig_bias", "D")
-
-                        outROOTFile.create_branch("rate", "D")
-                        outROOTFile.create_branch("ievent", "I")
-                        outROOTFile.create_branch("cycle", "I") #recored the (temperature or repeated msmt) cycle number.
-                        outROOTFile.additional_branch["cycle"][0] = cyc
-
-                        outROOTFile.create_branch("reverse_scan", "I")
-                        if self.configFile.REVERSE_BIAS_SCAN:
-                            outROOTFile.additional_branch["reverse_scan"][0] = 1
-                        else:
-                            outROOTFile.additional_branch["reverse_scan"][0] = 0
-
-                        lowVoltage_PS = E3646A_PS()
-                        if lowVoltage_PS.is_opened:
-                            outROOTFile.create_branch("lowVoltPS_V_ch1", "D")
-                            outROOTFile.create_branch("lowVoltPS_C_ch1", "D")
-                            outROOTFile.create_branch("lowVoltPS_V_ch2", "D")
-                            outROOTFile.create_branch("lowVoltPS_C_ch2", "D")
-
-                        def fill_lowVolt(outROOTFile, lowVoltage_PS):
-                            if lowVoltage_PS.is_opened:
-                                lowVoltage_PS_Ch1 = lowVoltage_PS.read_voltageCurrent(1)
-                                lowVoltage_PS_Ch2 = lowVoltage_PS.read_voltageCurrent(2)
-                                outROOTFile.additional_branch["lowVoltPS_V_ch1"][0] = lowVoltage_PS_Ch1[0]
-                                outROOTFile.additional_branch["lowVoltPS_C_ch1"][0] = lowVoltage_PS_Ch1[1]
-                                outROOTFile.additional_branch["lowVoltPS_V_ch2"][0] = lowVoltage_PS_Ch2[0]
-                                outROOTFile.additional_branch["lowVoltPS_C_ch2"][0] = lowVoltage_PS_Ch2[1]
-                        fill_lowVolt(outROOTFile, lowVoltage_PS)
-
-                        print("Ready for data taking")
-
-                        import pyvisa as visa
-                        rm = visa.ResourceManager("@py")
-                        xid = rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid
-
-                        current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
-                        start_time = time.time()
-                        event = 0
-                        fail_counter = 0
-
-                        rate_checker = time.time()
-                        daq_current_rate = 0
-
-                        while event < self.configFile.NumEvent:
-                            try:
-                                event += INCR
-                                outROOTFile.additional_branch["ievent"][0] = event
-
-                                if tenney_chamber or tenney_chamber_mode1[0] :
-                                    outROOTFile.additional_branch["temperature"][0] = f4t.get_temperature()
-                                    outROOTFile.additional_branch["humidity"][0] = f4t.get_humidity()
-
-                                piData = piSensor.getData()
-                                outROOTFile.additional_branch["pi_temperature"][0] = piData["temperature"]
-                                outROOTFile.additional_branch["pi_humidity"][0] = piData["humidity"]
-
-                                trigged = Scope.WaitForTrigger()
-
-                                #print("pass wait")
-                                outROOTFile.i_timestamp[0] = time.time()
-                                if (event-INCR)==0 or (event+INCR)%100==0:
-                                    current_100cycle = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
-                                    outROOTFile.additional_branch["mon_dut_bias"][0] =  PowerSupply.VoltageReader( self.configFile.PSDUTChannel )
-                                    outROOTFile.additional_branch["mon_trig_bias"][0] =  PowerSupply.VoltageReader( self.configFile.PSTriggerChannel )
-                                    fill_lowVolt(outROOTFile, lowVoltage_PS)
-                                outROOTFile.i_current[0] = current_100cycle
-                                waveData = ""
-                                try:
-                                    waveData = Scope.GetWaveform( self.configFile.EnableChannelList )
-                                    #print(waveData)
-                                except Exception as e:
-                                    event -= INCR
-                                    fail_counter += 1
-                                    print("fail getting data. {} because of : {}".format(fail_counter, e))
-
-                                    try:
-                                        Scope.Scope.reopen_resource()
-                                    except Exception as err:
-                                        print(err)
-
-                                    if fail_counter == 5000:
-                                        break
-                                    else:
-                                        continue
-
-                                if len(waveData) == 0:
-                                    event -= INCR
-                                    print("empyt waveData...Please report this issue")
-                                    continue
-                                elif len(waveData[0]) != len(self.configFile.EnableChannelList ):
-                                    event -= INCR
-                                    print("waveData and channel mismatch {} {}, Please report this issue".format(len(waveData[0]), len(self.configFile.EnableChannelList) ))
-                                    continue
-                                else:
-                                    pass
-
-                                for ch in range(len(self.configFile.EnableChannelList)):
-                                    for j in range( len(waveData[0][ch]) ):
-                                        outROOTFile.w[ch].push_back( float(waveData[1][ch][j]) )
-                                        outROOTFile.t[ch].push_back( waveData[0][ch][j] )
-                                outROOTFile.Fill()
-                                waveData = []
-                                waveData = ""
-                                gc.collect()
-
-                                if((event+INCR)%(100)==0):
-                                    daq_current_rate = 100.0/(time.time() - rate_checker)
-                                    outROOTFile.additional_branch["rate"][0] = daq_current_rate
-                                    date = datetime.datetime.now()
-                                    rate_checker = time.time()
-                                    print("[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(date=str(date), event=event+INCR, total=self.configFile.NumEvent, rate=daq_current_rate))
-                                    if daq_current_rate < 1.5:
-                                        ColorFormat.printColor("The rate is less than 1. Performaing trigger check ", "c")
-                                        PowerSupply.PowerSupply.checkTripped(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage)
-
-
-                            except socket.error, e:
-                                event -= 1
-                                ColorFormat.printColor("Catch exception: {daq_error}, ".format(daq_error=e), "y")
-                                ColorFormat.printColor("Continue data taking.", "y")
-                            except Exception as E:
-                                event -= 1
-                                ColorFormat.printColor("Catch unknown exception: {daq_error}, ".format(daq_error=E), "y")
-                                ColorFormat.printColor("Continue data taking.", "y")
-
-                                '''
-                                print(rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 2
-                                #rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
-                                print(rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                #raw_input()
-                                '''
-                                print(Scope.Scope.rm.visalib.sessions)
-                                print(Scope.Scope.inst.session)
-                                print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                #Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid -= 1
-
-                                '''
-                                for sec in Scope.Scope.rm.visalib.sessions:
-                                    try:
-                                        print(Scope.Scope.rm.visalib.sessions[sec].interface.lastxid)
-                                        #Scope.Scope.rm.visalib.sessions[sec].interface.lastxid -= 1
-                                    except:
-                                        print("you are screwd!")
-                                '''
-
-                                #rm.visalib.sessions[PowerSupply.PowerSupply.inst.session].interface.lastxid -= 1
-                                #print(Scope.Scope.rm.visalib.sessions[Scope.Scope.inst.session].interface.lastxid)
-                                #raw_input()
-                                #Scope.Scope.inst.clear()
-                                #except Exception as e:
-                                    #print("Closing Scope. catch exception: {e}".format(e=e) )
-                                #del Scope
-                                try:
-                                    '''
-                                    Scope.Scope.rm.close()
-                                    Scope = ScopeProducer( self.configFile )
-                                    Scope.Scope.inst.clear()
-                                    '''
-                                    Scope.Scope.reopen_resource()
-                                except Exception as err:
-                                    print(err)
-
-
-
-                        outROOTFile.Close()
-                        currentAfter = PowerSupply.CurrentReader( self.configFile.PSDUTChannel )
-                        current_file.write("{}:{}:{}\n".format(self.configFile.VoltageList[i], "After", currentAfter))
-                        end_time = time.time()
-                        print("Rate = {}/s".format(self.configFile.NumEvent/(end_time-start_time)))
                     else:
-                        print("Voltage dose not matche!")
+                        continue
 
-                PowerSupply.Close()
+                if len(waveData) == 0:
+                    event -= self.config_file.config.scope_setting.segment_count
+                    log.critical("empyt waveData...Please report this issue")
+                    continue
+                elif len(waveData[0]) != len(
+                    self.config_file.config.scope_setting.enable_channels
+                ):
+                    event -= self.config_file.config.scope_setting.segment_count
+                    log.critical(
+                        "waveData and channel mismatch {} {}, Please report this issue".format(
+                            len(waveData[0]),
+                            len(self.config_file.config.scope_setting.enable_channels),
+                        )
+                    )
+                    continue
+                else:
+                    pass
 
-                #here is the bias cycling and temperature reseting process.
-                if self.configFile.CYCLE>1 and cyc != self.configFile.CYCLE-1:
+                for ch in range(
+                    len(self.config_file.config.scope_setting.enable_channels)
+                ):
+                    for j in range(len(waveData[0][ch])):
+                        outROOTFile.w[ch].push_back(float(waveData[1][ch][j]))
+                        outROOTFile.t[ch].push_back(waveData[0][ch][j])
+                outROOTFile.Fill()
+                waveData = []
+                waveData = ""
+                gc.collect()
 
-                    if self.configFile.TEMP_RESET:
-                        print("You have told it to do temperature cycle! going to 20C")
-                        time.sleep(120)
-                        f4t.set_temperature( 20 )
-                        f4t.check_temperature( 20 )
+                if (event + self.config_file.config.scope_setting.segment_count) % (
+                    100
+                ) == 0:
+                    daq_current_rate = 100.0 / (time.time() - rate_checker)
+                    outROOTFile.additional_branch["rate"][0] = daq_current_rate
+                    date = datetime.datetime.now()
+                    rate_checker = time.time()
+                    log.info(
+                        "[{date}] Saved event on local disk : {event}/{total}, rate:{rate}".format(
+                            date=str(date),
+                            event=event
+                            + self.config_file.config.scope_setting.segment_count,
+                            total=nevent,
+                            rate=daq_current_rate,
+                        )
+                    )
+                    if daq_current_rate < 1.5:
+                        log.warning(
+                            "The rate is less than 1. Performaing trigger check "
+                        )
+                        self.instruments["hv_ps"].PowerSupply.checkTripped(
+                            self.config_file.config.dut_setting.ps_ch,
+                            self.config_file.config.trigger_setting.ps_ch,
+                        )
 
-                    print("Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(nap_time = self.configFile.WAIT_TIME))
-                    for leftTime in xrange(self.configFile.WAIT_TIME,0,-1):
-                        time.sleep(1)
-                        if leftTime%300==0:
-                            print "nap time remaining...{remain_time}".format(remain_time=leftTime)
-                    print("\nGood Morning!\n")
+            except socket.error as e:
+                event -= 1
+                log.critical("Catch exception: {daq_error}, ".format(daq_error=e))
+                log.warning("Continue data taking.")
+            except Exception as E:
+                event -= 1
+                log.critical(
+                    "Catch unknown exception: {daq_error}, ".format(daq_error=E)
+                )
+                log.warning("Continue data taking.")
 
-                    if self.configFile.TEMP_RESET:
-                        print("You have told it to do temperature cycle! going to {temp}".format(temp=current_set_temperature ))
-                        f4t.set_temperature( current_set_temperature )
-                        f4t.check_temperature( current_set_temperature )
-                        print("Let's wait a bit to let the temperature settle down :)")
-                        time.sleep(900)
+                try:
+                    """
+                    Scope.Scope.rm.close()
+                    Scope = ScopeProducer( self.configFile )
+                    Scope.Scope.inst.clear()
+                    """
+                    self.instruments["scope"].scope.reopen_resource()
+                except Exception as err:
+                    log.critical(err)
 
-                    PowerSupply = PowerSupplyProducer( self.configFile )
-                    PowerSupply.SetVoltage(self.configFile.PSTriggerChannel, self.configFile.TriggerVoltage, 1.5 )
+        outROOTFile.Close()
+        currentAfter = self.instruments["hv_ps"].CurrentReader(
+            self.config_file.config.dut_setting.ps_ch
+        )
+        self.current_mon_file.write(
+            "{}:{}:{}\n".format(
+                self.instruments["hv_ps"].VoltageReader(
+                    self.config_file.config.dut_setting.ps_ch
+                ),
+                "After",
+                currentAfter,
+            )
+        )
+        end_time = time.time()
+        log.info("Rate = {}/s".format(nevent / (end_time - start_time)))
 
-        current_file.close()
+    # ==========================================================================
+    # ==========================================================================
+    def run_core(self, dut_bias, trig_bias, temperature, cyc):
+        out_file_name = "Sr_Run_{}V_trig{}V_temp{}.root".format(
+            dut_bias, trig_bias, temperature
+        )
 
-        if tenney_chamber:
-            f4t.set_temperature(0)
+        self.instruments["hv_ps"].SetVoltage(
+            self.config_file.config.trigger_setting.ps_ch, trig_bias, 1.5
+        )
+        v_check = self.instruments["hv_ps"].ConfirmVoltage(
+            self.config_file.config.trigger_setting.ps_ch, trig_bias
+        )
 
+        self.instruments["hv_ps"].SetVoltage(
+            self.config_file.config.dut_setting.ps_ch, dut_bias, 1.5
+        )
+        v_check = self.instruments["hv_ps"].ConfirmVoltage(
+            self.config_file.config.dut_setting.ps_ch, dut_bias
+        )
+
+        if v_check:
+            outROOTFile = self.create_output_file(out_file_name, dut_bias, cyc)
+            self._core(
+                outROOTFile, self.config_file.config.general_setting.nevent, temperature
+            )
+        else:
+            log.critical("voltage dose not match! ({})".format(dut_bias))
+
+    # ==========================================================================
+    # ==========================================================================
+    def voltage_scanner(self, temperature, cyc):
+
+        if self.config_file.config.dut_setting.reverse_scan:
+            self.config_file.config.dut_setting.voltage_list.reverse()
+        for volt in self.config_file.config.dut_setting.voltage_list:
+            self.run_core(
+                volt,
+                self.config_file.config.trigger_setting.bias_voltage,
+                temperature,
+                cyc,
+            )
+
+    def run_normal_cycle(self, temperature):
+        for cyc in range(1, self.config_file.config.general_setting.cycle):
+            if self.instruments["chamber"].is_opened:
+                self.instruments["chamber"].set_temperature(temperature)
+                self.instruments["chamber"].check_temperature(temperature)
+                temperature_compare(
+                    self.instruments["chamber"],
+                    self.instruments["pi_sensor"],
+                    temperature,
+                )
+            self.voltage_scanner(temperature, cyc)
+            if not self.instruments["chamber"] is None:
+                if self.config_file.config.chamber_setting.cycle_reset:
+                    reset_temp = (
+                        self.config_file.config.chamber_setting.cycle_reset_temperature
+                    )
+
+                    log.warning(
+                        "You have told it to do cycle with reset temperature! going to {temp}".format(
+                            temp=reset_temp
+                        )
+                    )
+                    self.instruments["chamber"].set_temperature(reset_temp)
+                    self.instruments["chamber"].check_temperature(reset_temp)
+
+                    log.info("Let's wait a bit to let the temperature settle down :)")
+                    time.sleep(900)
+
+            log.warning(
+                "Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(
+                    nap_time=self.config_file.config.general_setting.cycle_wait_time
+                )
+            )
+            for leftTime in np.arange(
+                self.config_file.config.general_setting.cycle_wait_time, 0, -1
+            ):
+                time.sleep(1)
+                if leftTime % 300 == 0:
+                    log.info(
+                        "nap time remaining...{remain_time}".format(
+                            remain_time=leftTime
+                        )
+                    )
+            log.info("\nGood Morning!\n")
+
+    # ==========================================================================
+    # ==========================================================================
+    def temperature_scanner(self):
+        if self.instruments["chamber"].is_opened:
+            for (
+                i_temp,
+                i_maxv,
+                i_maxi,
+                i_trigV,
+            ) in self.config_file.config.chamber_setting.cycle_temperature_list:
+                self.instruments["chamber"].set_temperature(i_temp)
+                self.instruments["chamber"].check_temperature(i_temp)
+                new_volt_list = np.arange(
+                    self.config_file.config.chamber_setting.dut_min_voltage,
+                    i_maxv,
+                    self.config_file.config.chamber_setting.dut_voltage_step,
+                )
+                for cyc in range(1, self.config_file.config.general_setting.cycle):
+                    for volt in new_volt_list:
+                        self.run_core(volt, i_trigV, i_temp, cyc)
+        else:
+            log.critical("chamber is not there!")
+
+    def BetaMeas(self):
+        self.setup_dir()
+        self.create_description_file()
+        self.load_instruments()
+
+        if self.config_file.config.chamber_setting.mode == 1:
+            self.temperature_scanner()
+        elif self.config_file.config.chamber_setting.mode == 2:
+            self.voltage_scanner(
+                self.config_file.config.chamber_setting.target_temperature
+            )
+        elif self.config_file.config.chamber_setting.mode == 3:
+            self.run_normal_cycle(
+                self.config_file.config.chamber_setting.target_temperature
+            )
+        else:
+            pass
+
+        self.current_mon_file.close()
+
+        if self.instruments["chamber"]:
+            self.instruments["chamber"].set_temperature(20)
+
+    """
     def ThreshodVsPeriod(self):
         print("Using Threshold vs Period Scan scripts")
         progress = general.progress(1)
-        Scope = ScopeProducer( self.configFile )
-        PowerSupply = PowerSupplyProducer( self.configFile )
+        Scope = ScopeProducer(self.configFile)
+        PowerSupply = PowerSupplyProducer(self.configFile)
         MASTER_PATH = self.configFile.DAQMasterDir
         PARENT_DIR = self.configFile.DAQDataDir
-        Setup_Data_Folder( self.configFile.DAQMasterDir, self.configFile.DAQDataDir, self.configFile.RunNumber )
+        Setup_Data_Folder(
+            self.configFile.DAQMasterDir,
+            self.configFile.DAQDataDir,
+            self.configFile.RunNumber,
+        )
 
         for i in range(len(self.configFile.ThresholdScan_VoltageList)):
-            PowerSupply.SetVoltage( self.configFile.ThresholdScan_PSChannel, self.configFile.ThresholdScan_VoltageList[i] )
-            V_Check = PowerSupply.ConfirmVoltage( self.configFile.ThresholdScan_PSChannel, self.configFile.ThresholdScan_VoltageList[i] )
+            PowerSupply.SetVoltage(
+                self.configFile.ThresholdScan_PSChannel,
+                self.configFile.ThresholdScan_VoltageList[i],
+            )
+            V_Check = PowerSupply.ConfirmVoltage(
+                self.configFile.ThresholdScan_PSChannel,
+                self.configFile.ThresholdScan_VoltageList[i],
+            )
             if V_Check:
                 outFileName = self.configFile.ThresholdScan_FileNameList[i] + ".text"
                 outFile = open(outFileName, "w")
@@ -396,11 +540,21 @@ class BetaDAQ:
                 ini_threshold = self.configFile.ThresholdScan_StartValue
                 while ini_threshold <= self.configFile.ThresholdScan_EndValue:
                     if ini_threshold < 0:
-                        Scope.SetTrigger( self.configFile.ThresholdScan_ScopeChannel, ini_threshold, "NEG", "STOP")
+                        Scope.SetTrigger(
+                            self.configFile.ThresholdScan_ScopeChannel,
+                            ini_threshold,
+                            "NEG",
+                            "STOP",
+                        )
                         Scope.Scope.inst.write("BUZZ ON;")
                         sleep(2)
                     else:
-                        Scope.SetTrigger( self.configFile.ThresholdScan_ScopeChannel, ini_threshold, "POS", "STOP")
+                        Scope.SetTrigger(
+                            self.configFile.ThresholdScan_ScopeChannel,
+                            ini_threshold,
+                            "POS",
+                            "STOP",
+                        )
                         Scope.Scope.inst.write("BUZZ ON;")
                         sleep(2)
                     count = 1
@@ -410,28 +564,42 @@ class BetaDAQ:
                     endT = ""
                     timeout = self.configFile.ThresholdScan_Timeout
                     while count <= self.configFile.ThresholdScan_MaxEvent:
-                        next = Scope.WaitForTrigger( timeout, "Th Scan")
-                        deltaT = time.time()-t_0
-                        if deltaT >= timeout-0.1:
+                        next = Scope.WaitForTrigger(timeout, "Th Scan")
+                        deltaT = time.time() - t_0
+                        if deltaT >= timeout - 0.1:
                             endT = time.time()
                             break
-                        if time.time()-startT > self.configFile.ThresholdScan_MaxTime:
+                        if time.time() - startT > self.configFile.ThresholdScan_MaxTime:
                             print("\nExceed data taking max time {}".format(startT))
                             endT = time.time()
                             break
                         if "1" in next:
                             t_0 = time.time()
-                            waveform_data = Scope.GetWaveform(int(self.configFile.ThresholdScan_ScopeChannel), "binary raw")
-                            trigger_Tdiff = trcReader(waveform_data[0], "Trigger_Tdiff", self.configFile.ThresholdScan_ScopeChannel, "sequence_mode")
-                            for k in range(len(trigger_Tdiff)-1):
-                                triggerCounter.append( trigger_Tdiff[i+1][0]-trigger_Tdiff[i][0] )
-                            count+=1
+                            waveform_data = Scope.GetWaveform(
+                                int(self.configFile.ThresholdScan_ScopeChannel),
+                                "binary raw",
+                            )
+                            trigger_Tdiff = trcReader(
+                                waveform_data[0],
+                                "Trigger_Tdiff",
+                                self.configFile.ThresholdScan_ScopeChannel,
+                                "sequence_mode",
+                            )
+                            for k in range(len(trigger_Tdiff) - 1):
+                                triggerCounter.append(
+                                    trigger_Tdiff[i + 1][0] - trigger_Tdiff[i][0]
+                                )
+                            count += 1
                         else:
                             pass
-                        if count%100==0:
+                        if count % 100 == 0:
                             tmp = np.array(triggerCounter)
                             avg = np.mean(tmp)
-                            progress("Period Mean: {}   Finisehd".format(avg), count, self.configFile.ThresholdScan_MaxEvent )
+                            progress(
+                                "Period Mean: {}   Finisehd".format(avg),
+                                count,
+                                self.configFile.ThresholdScan_MaxEvent,
+                            )
                     triggerCounter = np.array(triggerCounter)
                     period = ""
                     if count > self.configFile.ThresholdScan_MaxEvent:
@@ -440,8 +608,16 @@ class BetaDAQ:
                     else:
                         period = np.mean(triggerCounter)
                         std = np.std(triggerCounter)
-                    outFile.write("{},{},{},{}\n".format(ini_threshold,period,std,len(triggerCounter)))
-                    print("Results: {},{},{},{}\n".format(ini_threshold,period,std,len(triggerCounter)))
+                    outFile.write(
+                        "{},{},{},{}\n".format(
+                            ini_threshold, period, std, len(triggerCounter)
+                        )
+                    )
+                    print(
+                        "Results: {},{},{},{}\n".format(
+                            ini_threshold, period, std, len(triggerCounter)
+                        )
+                    )
                     outFile.flush()
                     ini_threshold += self.configFile.ThresholdScan_Step
                     print("Next threshold : {}".format(ini_threshold))
@@ -449,3 +625,4 @@ class BetaDAQ:
                 print("Moving to next voltage...")
         PowerSupply.Close()
         print("Finished!")
+    """
