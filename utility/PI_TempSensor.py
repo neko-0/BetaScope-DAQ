@@ -14,9 +14,9 @@ class PI_TempSensor:
     def getData(self):
         try:
             connc = urlopen(self.http, timeout=0.01)
-        except URLError as e:
+        except URLError:
             return {"humidity": 10e10, "temperature": 10e10}
-        except socket.timeout as e:
+        except socket.timeout:
             return {"humidity": 10e11, "temperature": 10e11}
         data = connc.read()
         odata = json.loads(data)

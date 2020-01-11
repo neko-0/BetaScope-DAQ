@@ -7,7 +7,6 @@ coloredlogs.install(level="INFO", logger=log)
 
 import pyvisa as visa
 import time
-from pyvisa import constants
 
 
 class KeysightScope(object):

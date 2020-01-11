@@ -1,9 +1,7 @@
 import pyvisa as visa
 import time
-from time import sleep
-import sys
 import functools
-from .LecroyTRCReader import *
+from .LecroyTRCReader import trcReader
 
 
 class LecroyScope(object):
@@ -297,7 +295,7 @@ class LecroyScope(object):
                     waveCount = trcReader(
                         binary_stream, "WAVE_ARRAY_COUNT", ch, seq_mode
                     )
-                trigger_timestamp = []
+                # trigger_timestamp = []
                 time_data = []
                 for i in range(len(voltage_data)):
                     t = horizontal_offset + i * horizontal_inter

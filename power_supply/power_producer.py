@@ -5,7 +5,7 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
 
 
-from .caen_ps.CAEN_PS import *
+from .caen_ps.CAEN_PS import SimpleCaenPowerSupply
 from .keithley.core import Keithley
 
 

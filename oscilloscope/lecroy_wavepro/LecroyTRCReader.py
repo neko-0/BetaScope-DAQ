@@ -1,5 +1,4 @@
 import struct
-from array import array
 import sys
 
 OFF_SET = 21

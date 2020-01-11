@@ -6,7 +6,6 @@ coloredlogs.install(level="INFO", logger=log)
 
 import socket
 import time
-import errno
 import multiprocessing as mp
 from pymodbus.client.sync import ModbusTcpClient
 
@@ -63,7 +62,7 @@ class F4T_Controller:
 
     def set_purge_air(self, switch="ON"):
         self.sock.sendall(":OUTP5:STAT {mode}".format(mode=switch).encode())
-        data = self.sock.recv(1024).decode()
+        self.sock.recv(1024).decode()
 
     def set_temperature(self, value):
         scpi_command = ":SOURCE:CLOOP1:SPOINT {}".format(value)
@@ -87,7 +86,7 @@ class F4T_Controller:
             return -273.0
 
         tempValue = tempValue.split("\n")[0]
-        if tempValue is "":
+        if tempValue == "":
             tempValue = -273.0
 
         return float(tempValue)

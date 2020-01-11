@@ -6,9 +6,6 @@ coloredlogs.install(level="INFO", logger=log)
 
 import pyvisa as visa
 import time
-import sys
-import signal
-import os
 
 import general.general as general
 
@@ -56,9 +53,7 @@ class SimpleCaenPowerSupply(object):
             log.critical("Power supply is not available.")
         log.info("Checking remote status...")
         if "LOCAL" in remote_status:
-            log.critical(
-                "Remote access is closed, Press ENTER to contitue."
-            )
+            log.critical("Remote access is closed, Press ENTER to contitue.")
             input()
         else:
             log.info("Remote access is opened.")
