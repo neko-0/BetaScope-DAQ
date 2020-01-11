@@ -9,7 +9,7 @@ import socket
 
 class PI_TempSensor:
     def __init__(self):
-        self.http = "http://169.233.167.33/"
+        self.http = "http://169.233.222.178/"
 
     def getData(self):
         try:
