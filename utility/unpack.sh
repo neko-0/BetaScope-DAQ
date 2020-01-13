@@ -1,4 +1,5 @@
-#/bin/bash
+#!/bin/bash
+#!/usr/bin/env python
 
 count=0
 max=15
