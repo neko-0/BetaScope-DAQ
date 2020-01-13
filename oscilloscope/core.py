@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-
 import abc
-
 
 class Scope(abc.ABC):
     """
