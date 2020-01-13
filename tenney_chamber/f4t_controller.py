@@ -111,6 +111,8 @@ class F4T_Controller:
             time.sleep(5)
             continue
 
+    wait_temperature = check_temperature # alias function call.
+
     def temperature_ramp_rate(self, action, mode, value=""):
         """
         param action: read or write ramp rate from the temperature loop. Accept parameter like "set", "write", "get", "read"
