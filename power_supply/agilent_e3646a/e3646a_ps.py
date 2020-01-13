@@ -50,6 +50,7 @@ class E3646A_PS(object):
                     device=self.device_name
                 )
             )
+            log.critial("the error message is: {}".format(e))
             voltage = 10e11
             current = 10e11
         return (voltage, current)

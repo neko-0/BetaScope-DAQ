@@ -1,5 +1,4 @@
 import socket
-import pyvisa as visa
 
 
 class Keithley:

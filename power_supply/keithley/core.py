@@ -10,6 +10,8 @@ import socket
 import time
 import numpy as np
 
+from ..core import PowerSupply
+
 
 class SockConnection(object):
     def __init__(self, ip_address="192.168.1.13", port=5025):
@@ -234,7 +236,7 @@ class Display(Base):
 # ===============================================================================
 
 
-class Keithley(object):
+class Keithley(PowerSupply):
     def __init__(self, ip="192.168.1.13"):
         Connector.write("*RST", ip)
         self.smua = Smua(ip)
@@ -296,3 +298,37 @@ class Keithley(object):
             self.smua.nvbuffer1.clear()
             # self.display.trigger.clear()
             print("{} {}".format(current, voltage))
+
+    @classmethod
+    def MakePS(cls):
+        return cls()
+
+    # ===========================================================================
+    # ===========================================================================
+    def Enable_Channel(self, channel, option):
+        pass
+
+    # ===========================================================================
+    # ===========================================================================
+    def SetVoltage(self, channel, volt, maxI=1.2):
+        self.set_voltage(volt)
+
+    # ===========================================================================
+    # ===========================================================================
+    def ConfirmVoltage(self, channel, volt):
+        return self.confirm_voltage(volt)
+
+    # ===========================================================================
+    # ===========================================================================
+    def VoltageReader(self, channel):
+        return self.voltage_monitor()
+
+    # ===========================================================================
+    # ===========================================================================
+    def CurrentReader(self, channel):
+        return self.current_monitor_value()
+
+    # ===========================================================================
+    # ===========================================================================
+    def Close(self):
+        self.close()

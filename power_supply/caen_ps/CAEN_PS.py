@@ -9,10 +9,12 @@ import time
 
 import general.general as general
 
+from ..core import PowerSupply
+
 xx = "02"
 
 
-class SimpleCaenPowerSupply(object):
+class SimpleCaenPowerSupply(PowerSupply):
     def __init__(self):
 
         self.__status_bit_meaning = {
@@ -296,6 +298,49 @@ class SimpleCaenPowerSupply(object):
             self.channel_switch(2, "OFF")
         elif channel == 3:
             self.channel_switch(3, "OFF")
+
+    # ===========================================================================
+    # ===========================================================================
+    @classmethod
+    def MakePS(cls):
+        return cls()
+
+    # ===========================================================================
+    # ===========================================================================
+    def InitSetup(self, *argv):
+        self.Set_Compliance(*argv)
+
+    # ===========================================================================
+    # ===========================================================================
+    def Enable_Channel(self, channel, option):
+        self.channel_switch(channel, option)
+        volt_now = self.voltage_monitor_value(channel, 0)
+        self.set_voltage(channel, volt_now)
+
+    # ===========================================================================
+    # ===========================================================================
+    def SetVoltage(self, channel, volt, maxI=1.2):
+        self.set_voltage(channel, volt, maxI)
+
+    # ===========================================================================
+    # ===========================================================================
+    def ConfirmVoltage(self, channel, volt):
+        return self.confirm_voltage(channel, volt)
+
+    # ===========================================================================
+    # ===========================================================================
+    def VoltageReader(self, channel):
+        return self.voltage_monitor_value(channel, 0)
+
+    # ===========================================================================
+    # ===========================================================================
+    def CurrentReader(self, channel):
+        return self.current_monitor_value(channel, 0)
+
+    # ===========================================================================
+    # ===========================================================================
+    def Close(self):
+        return self.close("ALL")
 
 
 if __name__ == "__main__":
