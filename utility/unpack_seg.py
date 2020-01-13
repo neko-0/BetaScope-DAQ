@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 use for unpacking the segmented output file from keysight scope
 """
