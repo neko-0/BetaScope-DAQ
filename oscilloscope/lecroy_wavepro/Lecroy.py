@@ -2,9 +2,10 @@ import pyvisa as visa
 import time
 import functools
 from .LecroyTRCReader import trcReader
+from ..core import Scope
 
 
-class LecroyScope(object):
+class LecroyScope(Scope):
     """
     Class for Lecroy Wavepro 725zi Oscilloscope
     """
