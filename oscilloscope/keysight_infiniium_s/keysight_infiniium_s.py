@@ -8,8 +8,10 @@ coloredlogs.install(level="INFO", logger=log)
 import pyvisa as visa
 import time
 
+from ..core import Scope
 
-class KeysightScope(object):
+
+class KeysightScope(Scope):
     """
     Class for Keysight Infinium Scope
     """
@@ -273,3 +275,37 @@ class KeysightScope(object):
             return [t_output, v_output]
         else:
             return self.get_ascii_waveform_remote([channelList])
+
+    # ===========================================================================
+    # ===========================================================================
+    @classmethod
+    def MakeScope(cls, ip_address):
+        return cls(ip_address)
+
+    # ===========================================================================
+    # ===========================================================================
+    def InitSetup(self, *argv):
+        log.info("Initialzing setup")
+        self.arm_trigger(*argv)
+        self.acquisition_setting()
+
+    # ===========================================================================
+    # ===========================================================================
+    def GetWaveform(self, channel_list, mode="ascii", seq_mod=True):
+        return self.get_ascii_waveform_remote(channel_list)
+
+    # ===========================================================================
+    # ===========================================================================
+    def SetTrigger(self, channel, threshold, polarity, mode):
+        self.arm_trigger(channel, polarity, threshold, mode)
+        self.acquisition_setting()
+
+    # ===========================================================================
+    # ===========================================================================
+    def WaitTrigger(self, timeout=0.0, trigger_scan=None):
+        return self.waiting_for_next_wave()
+
+    # ===========================================================================
+    # ===========================================================================
+    def Enable_Channel(self, ch, option):
+        pass

@@ -16,97 +16,39 @@ class ScopeProducer:
         # self._config = DAQConfig()
         # self._config.ReadDAQConfig( configFileName )
         self.config_file = config_file
-        self.scope = ""
-        self.name = None
-
-        if "lecroy" in self.config_file.scope_setting.name:
-            log.info("Lecroy scope is being produced.")
-            self.name = self.config_file.scope_setting.name
-
+        self.name = self.config_file.scope_setting.name
+        log.info("Scope ({}) retrieved from config.".format(self.name))
+        log.info("Creating instance")
+        if "lecroy" in self.name.lower():
             self.scope = LecroyScope(self.config_file.scope_setting.ip)
-            self.scope.set_read_byte(
-                1048
-            )  # don't konw why read_raw() needs input. It wasn't like this before 2019/9/10
-
-            log.info("Setting up scope trigger and power supply.")
-            self.scope.Arm_trigger(
+            self.scope.InitSetup(
                 self.config_file.trigger_setting.scope_ch,
                 self.config_file.trigger_setting.threshold_type,
                 self.config_file.trigger_setting.scope_threshold,
                 self.config_file.trigger_setting.threshold_type,
             )
+        elif "keysight" in self.name.lower():
+            self.scope = KeysightScope(self.config_file.scope_setting.ip)
+            self.scope.InitSetup(
+                self.config_file.trigger_setting.scope_ch,
+                self.config_file.trigger_setting.threshold_type,
+                self.config_file.trigger_setting.scope_threshold,
+                self.config_file.trigger_setting.threshold_type,
+            )
+        else:
+            log.critical("cannot find definition of scope {}".format(self.name))
+            self.scope = None
+
+        if self.scope:
+            log.info("Setting scope method alias.")
+            self.GetWaveform = self.scope.GetWaveform
+            self.SetTrigger = self.scope.SetTrigger
+            self.WaitTrigger = self.scope.WaitTrigger
+            self.Enable_Channel = self.scope.Enable_Channel
 
             log.info("Enabling scope channels...")
             for ch in self.config_file.scope_setting.enable_channels:
-                self.scope.Set_Channel_Display(ch, "ON")
-
-            log.info("Producing scope methods...")
-
-            def Produce_GetWaveform():
-                def GetWaveform(ChannelList, mode="binary", seq_mode=True):
-                    data = self.scope.Get_Waveform(ChannelList, mode, seq_mode)
-                    return data
-
-                return GetWaveform
-
-            self.GetWaveform = Produce_GetWaveform()
-
-            def Produce_WaitTrigger():
-                def WaitTrigger(timeout=0.0, trigger_scan=None):
-                    status = self.scope.Wait_For_Next_Trigger(timeout, trigger_scan)
-                    return status
-
-                return WaitTrigger
-
-            self.WaitForTrigger = Produce_WaitTrigger()
-
-            def Produce_SetTrigger():
-                def SetTrigger(Channel, Threshold, Polarity, Mode):
-                    self.scope.Arm_trigger(Channel, Polarity, Threshold, Mode)
-
-                return SetTrigger
-
-            self.SetTrigger = Produce_SetTrigger()
-
-        if "keysight" in self.config_file.scope_setting.name:
-            log.info("Keysight scope is being produced.")
-            self.name = self.config_file.scope_setting.name
-
-            self.scope = KeysightScope(self.config_file.scope_setting.ip)
-            self.scope.arm_trigger(
-                self.config_file.trigger_setting.scope_ch,
-                self.config_file.trigger_setting.threshold_type,
-                self.config_file.trigger_setting.scope_threshold,
-                self.config_file.trigger_setting.threshold_type,
-            )
-            self.scope.acquisition_setting()
-
-            def Produce_SetTrigger():
-                def SetTrigger(Channel, Threshold, Polarity, Mode):
-                    self.scope.arm_trigger(Channel, Polarity, Threshold, Mode)
-                    self.scope.acquisition_setting()
-
-                return SetTrigger
-
-            self.SetTrigger = Produce_SetTrigger()
-
-            def Produce_WaitTrigger():
-                def WaitTrigger(timeout=0.0):
-                    status = self.scope.waiting_for_next_wave()
-                    return status
-
-                return WaitTrigger
-
-            self.WaitForTrigger = Produce_WaitTrigger()
-
-            def Produce_GetWaveform():
-                def GetWaveform(ChannelList, mode="ascii", seq_mode=True):
-                    data = self.scope.get_ascii_waveform_remote(ChannelList)
-                    return data
-
-                return GetWaveform
-
-            self.GetWaveform = Produce_GetWaveform()
+                self.Enable_Channel(ch, "ON")
 
     def _query(self, cmd):
         return self.scope.inst.query(cmd)

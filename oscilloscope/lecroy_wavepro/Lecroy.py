@@ -1,3 +1,9 @@
+import logging, coloredlogs
+
+logging.basicConfig()
+log = logging.getLogger(__name__)
+coloredlogs.install(level="INFO", logger=log)
+
 import pyvisa as visa
 import time
 import functools
@@ -357,6 +363,44 @@ class LecroyScope(Scope):
             return self.inst.query("TRMD SINGLE;WAIT {};FRTR;*OPC?".format(timeout))
         # self.inst.write("ARM;*OPC?")
 
+    # ===========================================================================
+    # ===========================================================================
+    @classmethod
+    def MakeScope(cls, ip_address):
+        return cls(ip_address)
+
+    # ===========================================================================
+    # ===========================================================================
+    def GetWaveform(self, channel_list, mode="binary", seq_mod=True):
+        return self.Get_Waveform(channel_list, mode, seq_mode)
+
+    # ===========================================================================
+    # ===========================================================================
+    def SetTrigger(self, channel, threshold, polarity, mode):
+        self.Arm_trigger(channel, polarity, threshold, mode)
+
+    # ===========================================================================
+    # ===========================================================================
+    def WaitTrigger(self, timeout=0.0, trigger_scan=None):
+        return self.Wait_For_Next_Trigger(timeout, trigger_scan)
+
+    # ===========================================================================
+    # ===========================================================================
+    def Enable_Channel(self, ch, option):
+        log.info("Setting channel {} {}".format(ch, option))
+        self.Set_Channel_Display(ch, option)
+
+    # ===========================================================================
+    # ===========================================================================
+    def InitSetup(self, *argv):
+        log.info("Initialzing setup")
+        self.set_read_byte(
+            1048
+        )  # don't konw why read_raw() needs input. It wasn't like this before 2019/9/10
+        self.Arm_trigger(*argv)
+
+    # ===========================================================================
+    # ===========================================================================
     def _test(self):
         self.inst.write("C2:TRig_LeVel 50V;")
         self.inst.write("C2:TRig_SLope NEG;TRIG:EDGE:SLOP %s")
