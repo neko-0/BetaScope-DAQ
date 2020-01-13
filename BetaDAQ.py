@@ -377,8 +377,8 @@ class BetaDAQ:
     # ==========================================================================
     # ==========================================================================
     def run_core(self, dut_bias, trig_bias, temperature, cyc):
-        out_file_name = "Sr_Run_{}V_trig{}V_temp{}.root".format(
-            dut_bias, trig_bias, temperature
+        out_file_name = "Sr_Run{}_{}V_trig{}V_temp{}.root".format(
+            dut_bias, self.config_file.general_setting.run_number, trig_bias, temperature
         )
 
         self.instruments["hv_ps"].SetVoltage(
