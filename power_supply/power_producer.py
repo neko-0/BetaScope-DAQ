@@ -30,7 +30,7 @@ class PowerSupplyProducer:
             log.critical("Cannot find power supply {}".format(self.name))
 
         log.info("setting method alias")
-        self.Enable_Channel = self.PowerSupply.Enbale_Channel
+        self.Enable_Channel = self.PowerSupply.Enable_Channel
         self.SetVoltage = self.PowerSupply.SetVoltage
         self.ConfirmVoltage = self.PowerSupply.ConfirmVoltage
         self.VoltageReader = self.PowerSupply.VoltageReader
