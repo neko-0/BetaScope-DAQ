@@ -22,7 +22,7 @@ class PowerSupply(abc.ABC):
         """
 
     @abc.abstractmethod
-    def Enbale_Channel(self, channel, option, *argv):
+    def Enable_Channel(self, channel, option, *argv):
         """
         This mehtod should enable/diable channel
         """
