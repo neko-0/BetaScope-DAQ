@@ -1,6 +1,6 @@
 import logging, coloredlogs
 
-logging.basicConfig()
+logging.basicConfig(filename="/tmp/beta_daq.log", filemode="a")
 log = logging.getLogger(__name__)
 coloredlogs.install(level="DEBUG", logger=log)
 
