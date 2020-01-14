@@ -90,17 +90,19 @@ class KeysightScope(Scope):
         self.inst.write(":TRIG:SWEep {}".format(sweep_mode))
         self.inst.write(":TRIG:LEVel CHAN{},{}".format(channel_number, threshold))
 
+        trig_source = self.inst.query(":TRIG:EDGE:SOUR?;*OPC?").split(";")[0]
+        threshold_setting = self.inst.query(":TRIG:LEV? {};*OPC?".format(trig_source))
+
         log.info(
             "trigger is set. Here are the details: \n"
             + "Source : {}\n".format(self.inst.query(":TRIG:EDGE:SOUR?;*OPC?"))
             + "Mode : {}\n".format(self.inst.query(":TRIG:MODE?;*OPC?"))
             + "Edge : {}\n".format(self.inst.query(":TRIG:EDGE:SLOP?;*OPC?"))
             + "Sweep : {}\n".format(self.inst.query(":TRIG:SWE?;*OPC?"))
+            + "Trig SRC : {}\n".format(trig_source)
+            + "Threshold : {}\n".format(threshold_setting)
         )
-        trig_source = self.inst.query(":TRIG:EDGE:SOUR?;*OPC?").split(";")[0]
 
-        threshold_setting = self.inst.query(":TRIG:LEV? {};*OPC?".format(trig_source))
-        log.info("Threshold : {}".format(threshold_setting))
 
     def create_dir(self, dirc):
         """
