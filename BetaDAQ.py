@@ -83,6 +83,7 @@ class BetaDAQ:
         FileDir.setup_data_folder(
             self.config_file.config.file_setting.master_dir,
             self.config_file.config.file_setting.output_dir,
+            self.config_file.config.file_setting.prefix,
             self.config_file.config.file_setting.run_number,
         )
         self.current_mon_file = open(

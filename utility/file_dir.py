@@ -7,7 +7,7 @@ class FileDir(object):
         pass
 
     @staticmethod
-    def setup_data_folder(master_dir, sub_dir, runNum):
+    def setup_data_folder(master_dir, sub_dir, prefix, runNum):
         """
         Setup folders for dumping data
 
@@ -17,7 +17,7 @@ class FileDir(object):
 
         return none
         """
-        sub_dir = "Sr_Run" + str(runNum) + "_" + sub_dir + "/"
+        sub_dir = prefix + str(runNum) + "_" + sub_dir + "/"
 
         if Path(master_dir).exists():
             os.chdir(master_dir)

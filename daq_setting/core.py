@@ -84,6 +84,7 @@ class DAQConfig(DAQConfigBase):
             self.file_setting = DAQConfig.Setting("file")
             self.file_setting.master_dir = self.OUTPUT_FILES_DIR.get("master_dir")
             self.file_setting.run_number = self.OUTPUT_FILES_DIR.getint("run_number")
+            self.file_setting.prefix = self.OUTPUT_FILES_DIR.get("prefix")
             self.file_setting.output_dir = self.OUTPUT_FILES_DIR.get("output_dir")
             self.file_setting.log_dir = self.OUTPUT_FILES_DIR.get("log_dir")
 
