@@ -111,7 +111,7 @@ class F4T_Controller:
             time.sleep(5)
             continue
 
-    wait_temperature = check_temperature # alias function call.
+    wait_temperature = check_temperature  # alias function call.
 
     def temperature_ramp_rate(self, action, mode, value=""):
         """

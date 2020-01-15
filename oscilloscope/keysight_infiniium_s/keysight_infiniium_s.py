@@ -103,7 +103,6 @@ class KeysightScope(Scope):
             + "Threshold : {}\n".format(threshold_setting)
         )
 
-
     def create_dir(self, dirc):
         """
         create a local directory on the desktop for saving data

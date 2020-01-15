@@ -2,6 +2,7 @@
 
 import abc
 
+
 class Scope(abc.ABC):
     """
     Abstract class for scopes.

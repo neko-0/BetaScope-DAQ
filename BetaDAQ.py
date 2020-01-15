@@ -41,7 +41,7 @@ def temperature_compare(f4t, pi_sensor, target_temp, diff=2):
             break
         if abs(pi_temp - target_temp) <= diff:
             log.info("temperature is stable now {}".format(target_temp))
-            for i in range(600):
+            for i in range(5):
                 time.sleep(1)
                 if i % 60 == 0:
                     log.info("wait for checking again {}/600".format(i))
@@ -378,8 +378,12 @@ class BetaDAQ:
     # ==========================================================================
     # ==========================================================================
     def run_core(self, dut_bias, trig_bias, temperature, cyc):
-        out_file_name = "Sr_Run{}_{}V_trig{}V_temp{}.root".format(
-            dut_bias, self.config_file.general_setting.run_number, trig_bias, temperature
+        out_file_name = "{prefix}{run_num}_{dut_bias}V_trig{trig_bias}V_temp{temperature}.root".format(
+            prefix=self.config_file.config.general_setting.prefix,
+            run_num=self.config_file.config.general_setting.run_number,
+            dut_bias=dut_bias,
+            trig_bias=trig_bias,
+            temperature=temperature,
         )
 
         self.instruments["hv_ps"].SetVoltage(
