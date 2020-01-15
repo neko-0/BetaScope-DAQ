@@ -381,7 +381,7 @@ class LecroyScope(Scope):
 
     # ===========================================================================
     # ===========================================================================
-    def WaitTrigger(self, timeout=0.0, trigger_scan=None):
+    def WaitForTrigger(self, timeout=0.0, trigger_scan=None):
         return self.Wait_For_Next_Trigger(timeout, trigger_scan)
 
     # ===========================================================================

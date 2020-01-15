@@ -43,7 +43,7 @@ class ScopeProducer:
             log.info("Setting scope method alias.")
             self.GetWaveform = self.scope.GetWaveform
             self.SetTrigger = self.scope.SetTrigger
-            self.WaitTrigger = self.scope.WaitTrigger
+            self.WaitForTrigger = self.scope.WaitForTrigger
             self.Enable_Channel = self.scope.Enable_Channel
 
             log.info("Enabling scope channels...")

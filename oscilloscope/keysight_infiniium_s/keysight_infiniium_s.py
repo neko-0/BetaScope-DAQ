@@ -303,7 +303,7 @@ class KeysightScope(Scope):
 
     # ===========================================================================
     # ===========================================================================
-    def WaitTrigger(self, timeout=0.0, trigger_scan=None):
+    def WaitForTrigger(self, timeout=0.0, trigger_scan=None):
         return self.waiting_for_next_wave()
 
     # ===========================================================================

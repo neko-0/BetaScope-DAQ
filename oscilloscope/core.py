@@ -27,7 +27,7 @@ class Scope(abc.ABC):
         """
 
     @abc.abstractmethod
-    def WaitTrigger(self, timeout, *argv):
+    def WaitForTrigger(self, timeout, *argv):
         """
         This method should wait for event triggering.
         """
