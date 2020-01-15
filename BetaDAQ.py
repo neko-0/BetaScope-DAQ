@@ -380,7 +380,7 @@ class BetaDAQ:
     def run_core(self, dut_bias, trig_bias, temperature, cyc):
         out_file_name = "{prefix}{run_num}_{dut_bias}V_trig{trig_bias}V_temp{temperature}.root".format(
             prefix=self.config_file.config.file_setting.prefix,
-            run_num=self.config_file.config.general_setting.run_number,
+            run_num=self.config_file.config.file_setting.run_number,
             dut_bias=dut_bias,
             trig_bias=trig_bias,
             temperature=temperature,
