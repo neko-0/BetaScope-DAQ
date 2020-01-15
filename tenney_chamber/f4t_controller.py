@@ -78,18 +78,23 @@ class F4T_Controller:
         scpi_command_get_temp = ":SOURCE:CLOOP1:PVALUE?"
         self.sock.sendall(scpi_command_get_temp.encode())
         try:
-            tempValue = self.sock.recv(1024).decode()
+            tempValue_str = self.sock.recv(1024).decode()
         # except socket.error as (code, msg):
         except:
             # while code != errno.EINTR:
             #    return -273.0
             return -273.0
 
-        tempValue = tempValue.split("\n")[0]
-        if tempValue == "":
-            tempValue = -273.0
+        tempValue_str = tempValue_str.split("\n")[0]
+        if tempValue_str == "":
+            tempValue_str = -273.0
 
-        return float(tempValue)
+        try:
+            tempValue = float(tempValue_str)
+            return tempValue
+        except:
+            info.warning("cannot get numerical value or conversion fail because of: {}".format(tempValue_str))
+            return -273.0
 
     def get_humidity(self):
         scpi_command_get_humi = ":SOURCE:CLOOP2:PVALUE?"
