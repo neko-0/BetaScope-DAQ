@@ -17,3 +17,4 @@ if __name__ == "__main__":
     DAQ.BetaMeas()
 
     log.info("DAQ is closed")
+    DAQ.instruments["hv_ps"].Close()
