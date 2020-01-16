@@ -433,6 +433,7 @@ class BetaDAQ:
                     temperature,
                 )
             self.voltage_scanner(temperature, cyc)
+            self.instruments["hv_ps"].Close()
             if not self.instruments["chamber"] is None:
                 if self.config_file.config.chamber_setting.cycle_reset:
                     reset_temp = (
