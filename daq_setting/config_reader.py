@@ -32,6 +32,7 @@ class DAQConfigReader(object):
             else:
                 EDITOR = os.environ.get("EDITOR", str("gedit"))
                 subprocess.call([EDITOR, config_file])
+            input("press 'Enter' key to continue.")
 
         obj = cls(config_file)
         obj.config.prepare(measurement_type)
