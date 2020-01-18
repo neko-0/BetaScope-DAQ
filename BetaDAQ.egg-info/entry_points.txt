@@ -1,0 +1,3 @@
+[console_scripts]
+DAQ = DAQRunner:run_daq
+

@@ -1,0 +1,6 @@
+README.md
+BetaDAQ.egg-info/PKG-INFO
+BetaDAQ.egg-info/SOURCES.txt
+BetaDAQ.egg-info/dependency_links.txt
+BetaDAQ.egg-info/entry_points.txt
+BetaDAQ.egg-info/top_level.txt

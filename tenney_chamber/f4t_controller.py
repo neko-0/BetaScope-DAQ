@@ -93,7 +93,11 @@ class F4T_Controller:
             tempValue = float(tempValue_str)
             return tempValue
         except:
-            info.warning("cannot get numerical value or conversion fail because of: {}".format(tempValue_str))
+            info.warning(
+                "cannot get numerical value or conversion fail because of: {}".format(
+                    tempValue_str
+                )
+            )
             return -273.0
 
     def get_humidity(self):

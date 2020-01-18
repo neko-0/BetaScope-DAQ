@@ -6,11 +6,8 @@ coloredlogs.install(level="DEBUG", logger=log)
 
 from BetaDAQ import BetaDAQ
 
-if __name__ == "__main__":
 
-    # create log file
-    # sys.stdout = logger.Logger()
-
+def run_daq():
     log.info("BetaScope DAQ is created")
 
     DAQ = BetaDAQ()
