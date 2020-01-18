@@ -9,8 +9,6 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="DEBUG", logger=log)
 
 import configparser
-import os
-from general.Color_Printing import ColorFormat
 
 
 class DAQConfigBase(object):

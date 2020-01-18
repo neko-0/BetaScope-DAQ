@@ -371,7 +371,7 @@ class LecroyScope(Scope):
 
     # ===========================================================================
     # ===========================================================================
-    def GetWaveform(self, channel_list, mode="binary", seq_mod=True):
+    def GetWaveform(self, channel_list, mode="binary", seq_mode=True):
         return self.Get_Waveform(channel_list, mode, seq_mode)
 
     # ===========================================================================

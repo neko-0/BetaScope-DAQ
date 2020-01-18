@@ -2,7 +2,6 @@
 functions for testing and general purpose
 """
 import sys, os
-import time
 
 
 def progress(mode=1):

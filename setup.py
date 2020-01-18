@@ -19,5 +19,5 @@ setuptools.setup(
         "Operating System :: Linux",
     ],
     python_requires=">=3.6",
-    entry_points={"console_scripts":["DAQ = DAQRunner:run_daq"]}
+    entry_points={"console_scripts": ["DAQ = DAQRunner:run_daq"]},
 )

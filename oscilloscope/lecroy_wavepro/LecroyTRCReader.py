@@ -344,9 +344,11 @@ def trcReader(
         return trigger_timestamp
 
     if sub_data == "Trigger_Tdiff" and sequence != None:
+        """
         WAVEDESC_INDEX = int(
             trcReader(binary_waveform, "WAVE_DESCRIPTOR", CH, sequence, TRCfile_mode)
         )
+        """
         USER_TEXT_bytes = int(trcReader(binary_waveform, "USER_TEXT", CH))
         TRIGTIME_ARRAY_bytes = int(trcReader(binary_waveform, "TRIGTIME_ARRAY", CH))
 

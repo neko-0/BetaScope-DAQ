@@ -93,7 +93,7 @@ class F4T_Controller:
             tempValue = float(tempValue_str)
             return tempValue
         except:
-            info.warning(
+            log.warning(
                 "cannot get numerical value or conversion fail because of: {}".format(
                     tempValue_str
                 )
