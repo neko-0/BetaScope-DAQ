@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="BetaDAQ",  # Replace with your own username
-    version="0.0.1",
+    version="0.1.0",
     author="UFSDLab",
     author_email="",
     description="A small data acquisition tools for beta scope",
