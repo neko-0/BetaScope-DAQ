@@ -423,7 +423,7 @@ class BetaDAQ:
             )
 
     def run_normal_cycle(self, temperature):
-        for cyc in range(1, self.config_file.config.general_setting.cycle):
+        for cyc in range(1, self.config_file.config.general_setting.cycle+1):
             if self.instruments["chamber"].is_opened:
                 self.instruments["chamber"].set_temperature(temperature)
                 self.instruments["chamber"].check_temperature(temperature)
@@ -434,39 +434,44 @@ class BetaDAQ:
                 )
             self.voltage_scanner(temperature, cyc)
             self.instruments["hv_ps"].Close()
-            if not self.instruments["chamber"] is None:
-                if self.config_file.config.chamber_setting.cycle_reset:
-                    reset_temp = (
-                        self.config_file.config.chamber_setting.cycle_reset_temperature
-                    )
-
-                    log.warning(
-                        "You have told it to do cycle with reset temperature! going to {temp}".format(
-                            temp=reset_temp
+            if self.config_file.config.general_setting.cycle>1:
+                if not self.instruments["chamber"] is None:
+                    if self.config_file.config.chamber_setting.cycle_reset:
+                        reset_temp = (
+                            self.config_file.config.chamber_setting.cycle_reset_temperature
                         )
+
+                        log.warning(
+                            "You have told it to do cycle with reset temperature! going to {temp}".format(
+                                temp=reset_temp
+                            )
+                        )
+                        self.instruments["chamber"].set_temperature(reset_temp)
+                        self.instruments["chamber"].check_temperature(reset_temp)
+
+                        log.info("Let's wait a bit to let the temperature settle down :)")
+                        time.sleep(900)
+
+                log.warning(
+                    "Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(
+                        nap_time=self.config_file.config.general_setting.cycle_wait_time
                     )
-                    self.instruments["chamber"].set_temperature(reset_temp)
-                    self.instruments["chamber"].check_temperature(reset_temp)
-
-                    log.info("Let's wait a bit to let the temperature settle down :)")
-                    time.sleep(900)
-
-            log.warning(
-                "Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(
-                    nap_time=self.config_file.config.general_setting.cycle_wait_time
                 )
-            )
-            for leftTime in np.arange(
-                self.config_file.config.general_setting.cycle_wait_time, 0, -1
-            ):
-                time.sleep(1)
-                if leftTime % 300 == 0:
-                    log.info(
-                        "nap time remaining...{remain_time}".format(
-                            remain_time=leftTime
+                for leftTime in np.arange(
+                    self.config_file.config.general_setting.cycle_wait_time, 0, -1
+                ):
+                    time.sleep(1)
+                    if leftTime % 300 == 0:
+                        log.info(
+                            "nap time remaining...{remain_time}".format(
+                                remain_time=leftTime
+                            )
                         )
-                    )
-            log.info("\nGood Morning!\n")
+                log.info("\nGood Morning!\n")
+            else:
+                if not self.instruments["chamber"] is None:
+                    self.instruments["chamber"].set_temperature(20)
+
 
     # ==========================================================================
     # ==========================================================================
