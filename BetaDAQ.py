@@ -72,7 +72,10 @@ def temperature_compare(f4t, pi_sensor, target_temp, cali_wt, diff=2):
                 my_target_temp -= 1
                 f4t.set_temperature(my_target_temp)
                 f4t.wait_temperature(my_target_temp)
-            time.sleep(1)
+            for i in range(int(cali_wt/2)):
+                time.sleep(1)
+                if i % 60 == 0:
+                    log.info("wait for checking again {}/{}".format(i, cali_wt))
 
 class BetaDAQ:
     def __init__(self):
