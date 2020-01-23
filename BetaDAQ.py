@@ -72,7 +72,7 @@ def temperature_compare(f4t, pi_sensor, target_temp, cali_wt, diff=2):
                 my_target_temp -= 1
                 f4t.set_temperature(my_target_temp)
                 f4t.wait_temperature(my_target_temp)
-
+            time.sleep(1)
 
 class BetaDAQ:
     def __init__(self):
@@ -132,12 +132,19 @@ class BetaDAQ:
     # ===========================================================================
     # ===========================================================================
     def load_instruments(self):
+        log.info("loading (default) instruments")
         self.instruments["pi_sensor"] = PI_TempSensor()
         if self.config_file.config.chamber_setting.name == "new_tenney":
             self.instruments["chamber"] = F4T_Controller()
         self.instruments["scope"] = ScopeProducer(self.config_file.config)
         self.instruments["hv_ps"] = PowerSupplyProducer(self.config_file.config)
         self.instruments["lv_ps"] = E3646A_PS()
+        log.info("checking instruments")
+        for name, inst in self.instruments.items():
+            if not inst is None:
+                log.info("{} looks fine.".format(name))
+            else:
+                log.critical("something wrong with {}".format(name))
 
     # ===========================================================================
     # ===========================================================================
