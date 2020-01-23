@@ -32,7 +32,16 @@ import shutil
 import numpy as np
 
 
-def temperature_compare(f4t, pi_sensor, target_temp, diff=2):
+def temperature_compare(f4t, pi_sensor, target_temp, cali_wt, diff=2):
+    """
+    Check and calibrate temperature between f4t and a sensor that is connected to the pi.
+
+    Args:
+        f4t (obj: F4T_Controller) : F4T_Controller class instance.
+        pi_sensor (obj : PI_TempSensor) : PI_TempSensor class instance.
+        cali_wt (int) : temperature calibration wait time in second.
+        diff (int) : required temperature difference between f4t and pi to be less than this value.
+    """
     pi_temp = pi_sensor.get_temperature()
     my_target_temp = target_temp
     okay = False
@@ -41,10 +50,10 @@ def temperature_compare(f4t, pi_sensor, target_temp, diff=2):
             break
         if abs(pi_temp - target_temp) <= diff:
             log.info("temperature is stable now {}".format(target_temp))
-            for i in range(5):
+            for i in range(cali_wt):
                 time.sleep(1)
                 if i % 60 == 0:
-                    log.info("wait for checking again {}/600".format(i))
+                    log.info("wait for checking again {}/{}".format(i, cali_wt))
             if abs(pi_temp - target_temp) <= diff:
                 okay = True
             else:
@@ -423,7 +432,7 @@ class BetaDAQ:
             )
 
     def run_normal_cycle(self, temperature):
-        for cyc in range(1, self.config_file.config.general_setting.cycle+1):
+        for cyc in range(1, self.config_file.config.general_setting.cycle + 1):
             if self.instruments["chamber"].is_opened:
                 self.instruments["chamber"].set_temperature(temperature)
                 self.instruments["chamber"].check_temperature(temperature)
@@ -431,10 +440,11 @@ class BetaDAQ:
                     self.instruments["chamber"],
                     self.instruments["pi_sensor"],
                     temperature,
+                    self.config_file.config.chamber_setting.cali_wt,
                 )
             self.voltage_scanner(temperature, cyc)
             self.instruments["hv_ps"].Close()
-            if self.config_file.config.general_setting.cycle>1:
+            if self.config_file.config.general_setting.cycle > 1:
                 if not self.instruments["chamber"] is None:
                     if self.config_file.config.chamber_setting.cycle_reset:
                         reset_temp = (
@@ -449,7 +459,9 @@ class BetaDAQ:
                         self.instruments["chamber"].set_temperature(reset_temp)
                         self.instruments["chamber"].check_temperature(reset_temp)
 
-                        log.info("Let's wait a bit to let the temperature settle down :)")
+                        log.info(
+                            "Let's wait a bit to let the temperature settle down :)"
+                        )
                         time.sleep(900)
 
                 log.warning(
@@ -471,7 +483,6 @@ class BetaDAQ:
             else:
                 if not self.instruments["chamber"] is None:
                     self.instruments["chamber"].set_temperature(20)
-
 
     # ==========================================================================
     # ==========================================================================

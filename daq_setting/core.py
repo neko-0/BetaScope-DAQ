@@ -152,6 +152,7 @@ class DAQConfig(DAQConfigBase):
             self.chamber_setting.dut_voltage_step = self.CHAMBER.getint(
                 "dut_voltage_step"
             )
+            self.chamber_setting.cali_wt = self.CHAMBER.getint("cali_wt")
 
         elif measurement_type == "threshold_scan":
 
