@@ -9,7 +9,7 @@ import socket
 
 class PI_TempSensor:
     def __init__(self):
-        self.http = "http://169.233.222.178/"
+        self.http = "http://192.168.1.55/"
 
     def getData(self):
         try:
@@ -18,8 +18,12 @@ class PI_TempSensor:
             return {"humidity": 10e10, "temperature": 10e10}
         except socket.timeout:
             return {"humidity": 10e11, "temperature": 10e11}
-        data = connc.read()
-        odata = json.loads(data)
+        pi_data = connc.read()
+        data = json.loads(pi_data)
+        odata = {
+            "humidity": float(data["humidity"]),
+            "temperature": float(data["humidity"]),
+        }
         return odata
 
     def get_temperature(self):
