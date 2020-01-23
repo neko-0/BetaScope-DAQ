@@ -46,6 +46,7 @@ def temperature_compare(f4t, pi_sensor, target_temp, cali_wt, diff=2):
     my_target_temp = target_temp
     okay = False
     while True:
+        pi_temp = pi_sensor.get_temperature()
         if okay:
             break
         if abs(pi_temp - target_temp) <= diff:
