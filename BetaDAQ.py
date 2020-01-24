@@ -134,8 +134,8 @@ class BetaDAQ:
             self.config_file.config.file_setting.log_dir,
         )
 
-    # ===========================================================================
-    # ===========================================================================
+    # ==========================================================================
+    # ==========================================================================
     def load_instruments(self):
         log.info("loading (default) instruments")
         self.instruments["pi_sensor"] = PI_TempSensor()
@@ -150,6 +150,24 @@ class BetaDAQ:
                 log.info("{} looks fine.".format(name))
             else:
                 log.critical("something wrong with {}".format(name))
+
+    # ==========================================================================
+    # ==========================================================================
+    def waiting(self):
+        log.warning(
+            "Be quiet! The DAQ is sleeping now. It will be back in {nap_time} sec".format(
+                nap_time=self.config_file.config.general_setting.cycle_wait_time
+            )
+        )
+        for leftTime in np.arange(
+            self.config_file.config.general_setting.cycle_wait_time, 0, -1
+        ):
+            time.sleep(1)
+            if leftTime % 300 == 0:
+                log.info(
+                    "nap time remaining...{remain_time}".format(remain_time=leftTime)
+                )
+        log.info("\nGood Morning!\n")
 
     # ===========================================================================
     # ===========================================================================
@@ -446,6 +464,16 @@ class BetaDAQ:
                 cyc,
             )
 
+    # ==========================================================================
+    # ==========================================================================
+    def run_cycle_no_chamber(self, temperature):
+        for cyc in range(1, self.config_file.config.general_setting.cycle + 1):
+            self.voltage_scanner(temperature, cyc)
+            self.waiting()
+
+    # ==========================================================================
+    # ==========================================================================
+
     def run_normal_cycle(self, temperature):
         for cyc in range(1, self.config_file.config.general_setting.cycle + 1):
             if self.instruments["chamber"].is_opened:
@@ -531,10 +559,14 @@ class BetaDAQ:
             self.temperature_scanner()
         elif self.config_file.config.chamber_setting.mode == 2:
             self.voltage_scanner(
-                self.config_file.config.chamber_setting.target_temperature
+                self.config_file.config.chamber_setting.target_temperature, 1
             )
         elif self.config_file.config.chamber_setting.mode == 3:
             self.run_normal_cycle(
+                self.config_file.config.chamber_setting.target_temperature
+            )
+        elif self.config_file.config.chamber_setting.mode == 4:
+            self.run_cycle_no_chamber(
                 self.config_file.config.chamber_setting.target_temperature
             )
         else:
