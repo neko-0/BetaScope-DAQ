@@ -213,8 +213,9 @@ class KeysightScope(Scope):
     def get_ascii_waveform_remote(self, channelList):
         """
         get waveform in ascii format and send to remote PC
-        :param channel: waveform channel
-        return [time_list, voltage_list]
+
+        Args:
+            channelList (list): list of channels
         """
         # self.inst.write(":WAV:FORM ASCii")
         # self.inst.write(":WAV:STR OFF")
@@ -223,13 +224,16 @@ class KeysightScope(Scope):
         if isinstance(channelList, list):
             t_output = []
             v_output = []
-            split_level = 1
+            split_level = 1 # split the waveform data in chunks, not really work for ascii though
             for channel in channelList:
                 start_pt = 1
                 read_pnt = 0
-                self.inst.query(":WAV:SOUR CHAN{};*OPC?".format(channel))
-                npts = int(self.inst.query(":WAV:POIN?")) / split_level
-                read_pnt = npts
+                self.inst.query(":WAV:SOUR CHAN{};*OPC?".format(channel)) # channel source selection
+                npts = int(self.inst.query(":WAV:POIN?")) # this return all points
+                total_pts = npts * self.seg_count
+                log.debug("number of potns : {}".format(npts))
+                log.debug("total points (include seg) {}".format(total_pts))
+                read_pnt = 5 #total_pts/split_level # read points each time
                 v_data = []
                 if self.seg_count < 1:
                     my_v_data = self.inst.query(
@@ -238,32 +242,39 @@ class KeysightScope(Scope):
                     my_v_data = [float(x) for x in my_v_data.split(",")[:-1]]
                     v_data += my_v_data
                 else:
-                    for seg in range(self.seg_count * split_level):
-                        for my_split in range(split_level):
-                            if my_split != split_level - 2:
-                                read_pnt = npts
-                            else:
-                                read_pnt = npts + 3
-                            my_v_data = self.inst.query(
-                                ":WAV:DATA? {},{};*OPC?".format(start_pt, read_pnt)
-                            ).split(";")[0]
-                            my_v_data = [float(x) for x in my_v_data.split(",")[:-1]]
-                            v_data += my_v_data
+                    #for seg in range(split_level):
+                    for my_split in range(split_level):
+                        if my_split != split_level - 2:
+                            read_pnt = npts
+                        else:
+                            read_pnt = npts + 3
 
-                            if my_split != split_level - 2:
-                                start_pt += npts
-                            else:
-                                start_pt = +npts + 3
+                        my_v_data = self.inst.query(
+                            ":WAV:DATA? {},{};*OPC?".format(start_pt, read_pnt)
+                        ).split(";")[0]
+
+                        #log.debug("my_v_data len: {}".format(my_v_data))
+                        log.debug("my_v_data len: {}".format(len(my_v_data)))
+
+                        my_v_data = [float(x) for x in my_v_data.split(",")[:-1]]
+
+                        log.debug("my_v_data after splitting: {}".format(len(my_v_data)))
+
+                        v_data += my_v_data
+
+                        if my_split != split_level - 2:
+                            start_pt += npts
+                        else:
+                            start_pt = +npts + 3
 
                 # print(":WAV:DATA? {} {}".format(channel, len(v_data)))
+                log.debug("Final v_data size : {}".format(len(v_data)))
                 t_data = []
                 t_output.append(t_data)
                 v_output.append(v_data)
 
             xorigin = self.inst.query(":WAV:XOR?;*OPC?".format(channel)).split(";")[0]
-            xincrement = self.inst.query(":WAV:XINC?;*OPC?".format(channel)).split(";")[
-                0
-            ]
+            xincrement = self.inst.query(":WAV:XINC?;*OPC?".format(channel)).split(";")[0]
             # print self.inst.query(":WAV:XOR?;*OPC?".format(channel)), self.inst.query(":WAV:XINC?;*OPC?".format(channel)), xincrement
             last_t = float(xorigin)
             for ch, chan in enumerate(v_output):
