@@ -104,7 +104,9 @@ if __name__ == "__main__":
 
     files = [f for f in os.listdir(user_args.d) if "root" in f]
 
-    with mp.Pool() as pool:
-        for file in files:
-            pool.apply_async(unpack_seg, args=(file, chList, user_args.n, user_args.s,))
-    # unpack_seg(user_args.f, chList, user_args.n, user_args.s)
+    pool = mp.Pool()
+    for file in files:
+        pool.apply_async(unpack_seg, args=(file, chList, user_args.n, user_args.s,))
+    pool.close()
+    pool.join()
+        # unpack_seg(user_args.f, chList, user_args.n, user_args.s)
