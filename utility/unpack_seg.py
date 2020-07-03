@@ -19,7 +19,7 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
 
     ifile = ROOT.TFile.Open(ifile_name)
     itree = ifile.Get("wfm")
-
+    ifile_name = ifile_name.replace("//", "/")
     ofile = ROOT.TFile.Open(f"unseg_{ifile_name.split('/')[1]}", "RECREATE")
     otree = ROOT.TTree("wfm", "un-segmented tree from DAQ")
     otree.SetDirectory(ofile)
