@@ -103,9 +103,10 @@ if __name__ == "__main__":
                     outROOTFile.additional_branch["humidity"][0] = f4t.get_humidity()
                     outROOTFile.i_timestamp[0] = time.time()
                     outROOTFile.Fill()
+                    time.sleep(5)
 
                 print("Waiting on temperature 1 for {} sec".format(argv.w1))
-                for nap in xrange(argv.w1, 0, -1):
+                for nap in range(argv.w1, 0, -1):
                     outROOTFile.additional_branch["temperature"][
                         0
                     ] = f4t.get_temperature()
@@ -127,7 +128,7 @@ if __name__ == "__main__":
                     outROOTFile.Fill()
 
                 print("Waiting on temperature 2 for {} sec".format(argv.w2))
-                for nap in xrange(argv.w2, 0, -1):
+                for nap in range(argv.w2, 0, -1):
                     outROOTFile.additional_branch["temperature"][
                         0
                     ] = f4t.get_temperature()

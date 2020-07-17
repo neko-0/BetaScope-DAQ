@@ -1,19 +1,28 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 use for unpacking the segmented output file from keysight scope
 """
 
-import ROOT
+import multiprocessing as mp
+import os
 from array import array
+
+import ROOT
+
+import logging
+
+logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
 
     ifile = ROOT.TFile.Open(ifile_name)
     itree = ifile.Get("wfm")
-
-    ofile = ROOT.TFile.Open("unseg_" + ifile_name.split("/")[1], "RECREATE")
+    ifile_name = ifile_name.replace("//", "/")
+    ofile = ROOT.TFile.Open(f"unseg_{ifile_name.split('/')[1]}", "RECREATE")
     otree = ROOT.TTree("wfm", "un-segmented tree from DAQ")
+    otree.SetDirectory(ofile)
     channels_v = {}
     channels_t = {}
     temperature = array("d", [0])
@@ -27,8 +36,8 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
     for ch in ch_list:
         channels_v[ch] = ROOT.std.vector("double")()
         channels_t[ch] = ROOT.std.vector("double")()
-        otree.Branch("w{}".format(ch), channels_v[ch])
-        otree.Branch("t{}".format(ch), channels_t[ch])
+        otree.Branch(f"w{ch}", channels_v[ch])
+        otree.Branch(f"t{ch}", channels_t[ch])
     otree.Branch("temperature", temperature, "temperature/D")
     otree.Branch("humidity", humidity, "humidity/D")
     otree.Branch("pi_temperature", temperature, "pi_temperature/D")
@@ -54,21 +63,18 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
         ievent[0] = entry.ievent
         cycle[0] = entry.cycle
         if ientry % 100 == 0:
-            print(ientry)
+            log.info(f"{ifile_name}:{ientry}")
         for seg in range(seg_count):
             xorigin = None
             dt = None
             for pt in range(num_pts):
                 for ch in ch_list:
                     if xorigin == None:
-                        xorigin = getattr(entry, "t{}".format(ch))[0]
+                        xorigin = getattr(entry, f"t{ch}")[0]
                     if dt == None:
-                        dt = (
-                            getattr(entry, "t{}".format(ch))[1]
-                            - getattr(entry, "t{}".format(ch))[0]
-                        )
+                        dt = getattr(entry, f"t{ch}")[1] - getattr(entry, f"t{ch}")[0]
                     channels_v[ch].push_back(
-                        getattr(entry, "w{}".format(ch))[pt + seg * num_pts]
+                        getattr(entry, f"w{ch}")[pt + seg * num_pts]
                     )
                     channels_t[ch].push_back(xorigin)
                 xorigin += dt
@@ -80,7 +86,6 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
 
     otree.Write()
     ofile.Close()
-
     ifile.Close()
 
 
@@ -88,7 +93,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", type=str)
+    parser.add_argument("-d", type=str)
     parser.add_argument("-c", type=str)
     parser.add_argument("-n", type=int)
     parser.add_argument("-s", type=int)
@@ -97,4 +102,11 @@ if __name__ == "__main__":
 
     chList = [x for x in user_args.c.split(",")]
 
-    unpack_seg(user_args.f, chList, user_args.n, user_args.s)
+    files = [f"{user_args.d}/{f}" for f in os.listdir(user_args.d) if "root" in f]
+
+    pool = mp.Pool()
+    for file in files:
+        pool.apply_async(unpack_seg, args=(file, chList, user_args.n, user_args.s,))
+    pool.close()
+    pool.join()
+    # unpack_seg(user_args.f, chList, user_args.n, user_args.s)

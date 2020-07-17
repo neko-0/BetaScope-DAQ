@@ -120,9 +120,10 @@ class BetaDAQ:
             subprocess.call(
                 [
                     editor,
-                    "Sr_Run_"
-                    + str(self.config_file.config.file_setting.run_number)
-                    + "_Description.ini",
+                    "{run_prefix}_{rNum}_Description.ini".format(
+                        run_prefix=self.config_file.config.file_setting.prefix,
+                        rNum=self.config_file.config.file_setting.run_number,
+                    ),
                 ]
             )
         else:

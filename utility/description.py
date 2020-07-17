@@ -20,7 +20,9 @@ def CreateDescription(RunNumber):
             f.write("Run_Number = \n")
 
             f.write("DUT_Manufacture = \n")
-            f.write("DUT_Senor_Name = \n")
+            f.write("DUT_Sensor_Name = \n")
+            f.write("DUT_UDI = \n")
+            f.write("DUT_geometry = \n")
             f.write("DUT_Wafer_Number = \n")
             f.write("DUT_Wafer_Position = \n")
             f.write("DUT_Fluence_Type = \n")
@@ -28,15 +30,15 @@ def CreateDescription(RunNumber):
             f.write("DUT_Readout_Board = \n")
             f.write("DUT_Readout_Board_Number = \n")
 
-            f.write("Scope_Name = \n")
+            f.write("Scope_Name = keysight \n")
             f.write("DUT_Scope_Channel = 2 \n")
-            f.write("Trigger_Scope_Channel = 2 \n")
+            f.write("Trigger_Scope_Channel = 3 \n")
 
-            f.write("Power_Supply_Name = \n")
+            f.write("Power_Supply_Name = CAEN \n")
             f.write("DUT_PS_Channel = 2 \n")
             f.write("Trigger_PS_Channel = 3 \n")
 
-            f.write("Trigger_Sensor_Name = \n")
+            f.write("Trigger_Sensor_Name = HPK2_S8664_chip15 \n")
             f.write("Trigger_Readout = \n")
             f.write("Trigger_Voltage = \n")
 
