@@ -40,8 +40,8 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
         otree.Branch(f"t{ch}", channels_t[ch])
     otree.Branch("temperature", temperature, "temperature/D")
     otree.Branch("humidity", humidity, "humidity/D")
-    otree.Branch("pi_temperature", temperature, "pi_temperature/D")
-    otree.Branch("pi_humidity", humidity, "pi_humidity/D")
+    otree.Branch("pi_temperature", pi_temperature, "pi_temperature/D")
+    otree.Branch("pi_humidity", pi_humidity, "pi_humidity/D")
     otree.Branch("i_timestamp", i_timestamp, "i_timestamp/D")
     otree.Branch("i_current", i_current, "i_current/D")
     otree.Branch("ievent", ievent, "ievent/I")
@@ -50,7 +50,7 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
     for ientry, entry in enumerate(itree):
         try:
             temperature[0] = entry.temperature
-            pi_humidity[0] = entry.humidity
+            humidity[0] = entry.humidity
         except:
             pass
         try:

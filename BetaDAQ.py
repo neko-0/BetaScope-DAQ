@@ -10,6 +10,7 @@ from daq_setting import DAQConfigReader
 from utility.file_dir import FileDir
 from utility.description import CreateDescription
 from utility.PI_TempSensor import PI_TempSensor
+from utility.temp_sensor import TempSensor
 
 from file_io import ROOTFileOutput
 
@@ -139,7 +140,7 @@ class BetaDAQ:
     # ==========================================================================
     def load_instruments(self):
         log.info("loading (default) instruments")
-        self.instruments["pi_sensor"] = PI_TempSensor()
+        self.instruments["pi_sensor"] = TempSensor()
         if self.config_file.config.chamber_setting.name == "new_tenney":
             self.instruments["chamber"] = F4T_Controller()
         self.instruments["scope"] = ScopeProducer(self.config_file.config)
@@ -277,9 +278,7 @@ class BetaDAQ:
                     ].get_humidity()
 
                 piData = self.instruments["pi_sensor"].getData()
-                outROOTFile.additional_branch["pi_temperature"][0] = piData[
-                    "temperature"
-                ]
+                outROOTFile.additional_branch["pi_temperature"][0] = piData["temperature"]
                 outROOTFile.additional_branch["pi_humidity"][0] = piData["humidity"]
 
                 self.instruments["scope"].WaitForTrigger()

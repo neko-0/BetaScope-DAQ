@@ -41,7 +41,7 @@ class SimpleCaenPowerSupply(PowerSupply):
         resources = rm.list_resources()
         log.info(resources)
         for res in resources:
-            if "ttyACM0" in res:
+            if "ttyACM1" in res:
                 self.inst = rm.open_resource(res)
                 self.inst.clear()
         # self.inst.write_termination("\r\n")

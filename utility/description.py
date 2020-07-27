@@ -20,7 +20,7 @@ def CreateDescription(RunNumber):
             f.write("Run_Number = \n")
 
             f.write("DUT_Manufacture = \n")
-            f.write("DUT_Sensor_Name = \n")
+            f.write("DUT_Senor_Name = \n")
             f.write("DUT_UDI = \n")
             f.write("DUT_geometry = \n")
             f.write("DUT_Wafer_Number = \n")
