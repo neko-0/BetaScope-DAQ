@@ -8,7 +8,7 @@ import pyvisa as visa
 import time
 import functools
 from .LecroyTRCReader import trcReader
-from ..core import Scope
+from ..base import Scope
 
 
 class LecroyScope(Scope):
@@ -125,8 +125,7 @@ class LecroyScope(Scope):
 
     # ===========================================================================
     def Arm_trigger(self, channel_number, slope, threshold, sweep_mode="NORM"):
-        """
-        """
+        """"""
         self._Set_Trigger_Mode(channel_number, sweep_mode)
         self._Set_Trigger_Slope(channel_number, slope)
         self._Set_Trigger_Level(channel_number, threshold)

@@ -1,18 +1,26 @@
-import setuptools
-
+from setuptools import setup, find_packages
+# import os
 
 setuptools.setup(
-    name="BetaDAQ",  # Replace with your own username
+    name="BetaScope-DAQ",  # Replace with your own username
     version="0.1.0",
     author="UFSDLab",
-    author_email="",
+    author_email="yuzhao@ucsc.edu",
     description="A small data acquisition tools for beta scope",
     long_description="A small data acquisition tools for beta scope",
     long_description_content_type="text/markdown",
     url="",
-    packages=setuptools.find_packages(
-        "pyvisa, pyvisa-py, logging, coloredlogs, numpy, configparser",
-    ),
+    package_dir={"": "src"},
+    packages=find_packages(where="src", exclude=["tests"]),
+    install_requires=[
+        "pyvisa",
+        "pyvisa-py",
+        "pymodbus",
+        "numpy",
+        "coloredlogs",
+        "configparser",
+        "matplotlib",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

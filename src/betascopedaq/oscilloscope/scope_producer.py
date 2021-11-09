@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
 
 from .lecroy_wavepro.Lecroy import LecroyScope
-from .keysight_infiniium_s.keysight_infiniium_s import KeysightScope
+from .keysight_infiniium_s.interface import KeysightScope
 
 
 class ScopeProducer:
