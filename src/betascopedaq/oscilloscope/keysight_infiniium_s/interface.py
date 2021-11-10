@@ -247,13 +247,13 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
 
         # the data from 'get_ascii_waveform' is a string seperated by comma
         waveform = data["waveform"].split(",")
-        waveform = np.asarray(list(map(float, waveform[:-2])))
+        waveform = np.asarray(list(map(float, waveform[:-1])))
 
         for i in range(self.nsegments):
-            t_output = np.arange(xorigin, xorigin*npts*xincrement, xincrement)
+            t_output = np.arange(xorigin, xorigin+npts*xincrement, xincrement)
             v_output = waveform[start_pt:start_pt+npts]
             start_pt += npts
-            yield [t_output, v_output]
+            yield t_output, v_output
 
     def get_ascii_waveform_remote(self, channels):
         """
@@ -267,11 +267,12 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         if not isinstance(channels, list):
             raise ValueError(f"channles need to be list, received {type(channels)}")
 
-        output = []
+        output = {}
         for channel in channels:
+            output[f"ch{channel}"] = []
             raw_waveform = self.raw_ascii_waveform(channel)
-            data = list(self.parse_ascii_waveform(raw_waveform))
-            output.append(data)
+            for wav in self.parse_ascii_waveform(raw_waveform):
+                output[f"ch{channel}"].append(wav)
 
         return output
 
