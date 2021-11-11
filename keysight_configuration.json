@@ -1,14 +1,14 @@
 {
   "output_path" : "./test_daq/",
   "nevents" : 1000,
-  "nsegments" : 20,
+  "nsegments" : 200,
   "time_ranges" : 100e-9,
-  "sampling_rate" : 40,
-  "ip_address" : "192.168.1.12",
+  "sampling_rate" : 40e9,
+  "ip_address" : "169.254.124.148",
   "enable_channels" : [1,2,3],
   "trigger_setting" : {
-      "channel" : 3,
-      "slope" : "POS",
-      "threshold" : 0.02
+      "channel" : 1,
+      "slope" : "NEG",
+      "threshold" : 0.05
     }
 }

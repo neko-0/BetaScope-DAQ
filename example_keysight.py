@@ -19,7 +19,8 @@ def keysight_daq_runner(config_file):
 
     # construct scope instance
     scope = betascopedaq.KeysightScope()
-    scope.nsegments = config["nsegments"]
+    nsegments = config["nsegments"]
+    scope.nsegments = nsegments
 
     if not scope.initialize(config["ip_address"], config["trigger_setting"]):
         raise IOError("cannot connect to scope!")
@@ -29,7 +30,7 @@ def keysight_daq_runner(config_file):
 
     # for commands that are not implemented, you can directly send to the scope
     scope.write(f":TIMebase:RANGe {config['time_ranges']}")
-    scope.write(f":QCQ:SRAT:DIG {config['sampling_rate']}")
+    # scope.write(f":ACQuire:SRATe:ANALog {config['sampling_rate']}")
 
     # prepare output files
     output_path = pathlib.Path(f"{config['output_path']}")
@@ -38,24 +39,25 @@ def keysight_daq_runner(config_file):
 
     # running waveform acquisition
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
-        nevents = range(config["nevents"])
-        pbar = tqdm.tqdm(total=nevents * nsegments, unit="evt", dynamic_ncols=True)
+        nevents = config["nevents"]
+        pbar = tqdm.tqdm(total=int(nevents * nsegments), unit="evt", dynamic_ncols=True)
         evt_counter = 0
-        for i_event in nevents:
+        for i_event in range(nevents):
             trig_status = None
             while trig_status != "1":
                 trig_status = scope.wait_trigger()
             waveforms = scope.get_waveform(config["enable_channels"])
 
+            # storing the waveforms
             for channel, wav_seg in waveforms.items():
                 for wav in wav_seg:
                     t_trace, v_trace = wav
                     size = len(t_trace)
                     grp = output_file.create_group(f"evt{evt_counter}")
-                    grp.create_dataset(f"ch{channel}/time", data=t_trace)
-                    grp.create_dataset(f"ch{channel}/voltage", data=v_trace)
+                    grp.create_dataset(f"{channel}/time", data=t_trace)
+                    grp.create_dataset(f"{channel}/voltage", data=v_trace)
                     evt_counter += 1
-
+            pbar.update(nsegments)
 
 if __name__ == "__main__":
 

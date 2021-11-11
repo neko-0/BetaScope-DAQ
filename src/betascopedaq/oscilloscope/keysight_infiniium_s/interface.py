@@ -16,7 +16,7 @@ class KeysightScopeInterfaceBase(Scope):
         self.instrument = None
         self.active_channels = []
         self.nsegments = 20
-        self.timeout = 100000
+        self.timeout = 10
 
     @property
     def n_active_channels(self):
@@ -218,7 +218,7 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         """
         hard coded acquisition setting before data taking
         """
-        self.write(":*CLS")
+        self.write("*CLS")
         self.write(":STOP")
         self.write(":ACQ:MODE SEGM")  # Segmentation mode
         # self.write(":ACQ:MODE RTIMe") # Real time mode
@@ -303,21 +303,26 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         requsted_waveforms = {}
         output = {}
         # getting the first channel
+        lookup = f"ch{channels[0]}"
         future_wav = self.threadpool.submit(self.raw_text_waveform, channels[0])
-        requsted_waveforms[f"ch{channels[0]}"] = future_wav
-        for channel in channels:
-            lookup = f"ch{channel}"
-            if lookup in requsted_waveforms:
-                wav_future = requsted_waveforms.pop(lookup)
-                wav = self.parse_text_waveform(wav_future.result())
-                output[lookup] = list(wav)
-            else:
-                future_wav = self.threadpool.submit(self.raw_text_waveform, channel)
-                requsted_waveforms[lookup] = future_wav
+        requsted_waveforms[lookup] = future_wav
+        for channel in channels[1:]:
+            # get the previous one
+            wav_result = requsted_waveforms.pop(lookup).result()
 
+            # send the next request
+            future = self.threadpool.submit(self.raw_text_waveform, channel)
+            lookup = f"ch{channel}"
+            requsted_waveforms[lookup] = future
+
+            # start parting and update next lookup name
+            wav = self.parse_text_waveform(wav_result)
+            output[lookup] = list(wav)
+
+        # final check
         if lookup in requsted_waveforms:
-            wav_future = requsted_waveforms.pop(lookup)
-            wav = self.parse_text_waveform(wav_future.result())
+            wav_result = requsted_waveforms.pop(lookup).result()
+            wav = self.parse_text_waveform(wav_result)
             output[lookup] = list(wav)
 
         return output
