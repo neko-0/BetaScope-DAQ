@@ -16,7 +16,7 @@ class KeysightScopeInterfaceBase(Scope):
         self.instrument = None
         self.active_channels = []
         self.nsegments = 20
-        self.timeout = 10
+        self.timeout = 10000
 
     @property
     def n_active_channels(self):
@@ -68,8 +68,8 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.inst.close()
 
     def enable_channel(self, channel, status):
-        self.write(f":CHANnel{channel}:COMMonmode {status}")
-        self.write(f":CHANnel{channel}:DISPlay {status}")
+        self.query(f":CHANnel{channel}:COMMonmode {status};*OPC?")
+        self.query(f":CHANnel{channel}:DISPlay {status};*OPC?")
 
     def get_waveform(self, channel, format="text", *args, **kwargs):
         methods = {"text": self.get_text_waveform}
@@ -102,13 +102,12 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         complete_status = self.query("*CLS;*OPC?")
         assert complete_status == "1"
         complete_status = self.query(":DIGitize;*OPC?")
-
         return complete_status
 
     def connect(self, ip_address, prefix="TCPIP0", suffix="inst0::INSTR"):
         self.ip_address = ip_address
         address = f"{prefix}::{self.ip_address}::{suffix}"
-        self.instrument = self.resource_manager.open_resource(address)
+        self.instrument = self.resource_manager.open_resource(address, chunk_size=1024)
         self.instrument.clear()
         self.write("*CLS")
         self.write("*IDN?")
@@ -260,6 +259,7 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         output["xorigin"] = self.query(":WAV:XOR?;*OPC?").split(";")[0]
         output["xincrement"] = self.query(":WAV:XINC?;*OPC?").split(";")[0]
         output["waveform"] = self.query(":WAV:DATA?")
+        self.query("*OPC?")
         return output
 
     def parse_text_waveform(self, data):
@@ -282,10 +282,13 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         # the size of the waveform will be npts * nsegments
         assert len(waveform) == total_pts
 
+        t_trace_start = xorigin
         for i in range(self.nsegments):
-            t_output = np.arange(xorigin, xorigin + npts * xincrement, xincrement)
+            t_trace_end = t_trace_start + npts * xincrement
+            t_output = np.arange(t_trace_start, t_trace_end, xincrement)
             v_output = waveform[start_pt : start_pt + npts]
             start_pt += npts
+            t_trace_start = t_trace_end
             yield t_output, v_output
 
     def get_text_waveform(self, channels):
@@ -309,16 +312,14 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         for channel in channels[1:]:
             # get the previous one
             wav_result = requsted_waveforms.pop(lookup).result()
-
             # send the next request
             future = self.threadpool.submit(self.raw_text_waveform, channel)
-            lookup = f"ch{channel}"
-            requsted_waveforms[lookup] = future
-
             # start parting and update next lookup name
             wav = self.parse_text_waveform(wav_result)
             output[lookup] = list(wav)
 
+            lookup = f"ch{channel}"
+            requsted_waveforms[lookup] = future
         # final check
         if lookup in requsted_waveforms:
             wav_result = requsted_waveforms.pop(lookup).result()

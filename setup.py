@@ -21,6 +21,7 @@ setuptools.setup(
         "coloredlogs",
         "configparser",
         "matplotlib",
+        "plotext",
         "h5py",
         "tqdm",
     ],

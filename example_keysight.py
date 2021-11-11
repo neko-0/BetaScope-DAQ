@@ -9,9 +9,11 @@ import h5py
 import argparse
 import betascopedaq
 import tqdm
+import plotext as plt
 
+DISPLAY_FIRST_SEG = True
 
-def keysight_daq_runner(config_file):
+def keysight_daq_runner(config_file, display_wav):
 
     # read in JSON configuration file
     with open(config_file, "r") as f:
@@ -41,28 +43,54 @@ def keysight_daq_runner(config_file):
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
         nevents = config["nevents"]
         pbar = tqdm.tqdm(total=int(nevents * nsegments), unit="evt", dynamic_ncols=True)
-        evt_counter = 0
         for i_event in range(nevents):
             trig_status = None
             while trig_status != "1":
                 trig_status = scope.wait_trigger()
             waveforms = scope.get_waveform(config["enable_channels"])
 
+            display_ch = {}
             # storing the waveforms
+            evt_grp = output_file.create_group(f"evt{i_event}")
             for channel, wav_seg in waveforms.items():
-                for wav in wav_seg:
+                for iseg, wav in enumerate(wav_seg):
+                    seg_index = f"seg{iseg}"
+                    if seg_index in evt_grp:
+                        seg_grp = evt_grp[seg_index]
+                    else:
+                        seg_grp = evt_grp.create_group(seg_index)
                     t_trace, v_trace = wav
-                    size = len(t_trace)
-                    grp = output_file.create_group(f"evt{evt_counter}")
-                    grp.create_dataset(f"{channel}/time", data=t_trace)
-                    grp.create_dataset(f"{channel}/voltage", data=v_trace)
-                    evt_counter += 1
+                    seg_grp.create_dataset(f"{channel}/time", data=t_trace)
+                    seg_grp.create_dataset(f"{channel}/voltage", data=v_trace)
+                    if display_wav:
+                        if channel not in display_ch:
+                            display_ch[channel] = {"time": t_trace.tolist(), "voltage": v_trace.tolist()}
+                        elif not DISPLAY_FIRST_SEG:
+                            display_ch[channel]["time"] += t_trace.tolist()
+                            display_ch[channel]["voltage"] += v_trace.tolist()
+            if display_wav:
+                plt.subplots(1, len(display_ch))
+                for i, ch in enumerate(display_ch, start=1):
+                    plt.subplot(1, i)
+                    plt.plot(display_ch[ch]["time"], display_ch[ch]["voltage"], label=ch)
+                plt.show(hide=True)
+                m_plot = plt.get_canvas()
+                plt.clear_figure()
+                print(m_plot)
             pbar.update(nsegments)
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Example of DAQ with Keysight Scope")
     parser.add_argument("--config", dest="config", type=str, help="configuration file.")
+    parser.add_argument(
+        "--display-wav",
+        dest="display_wav",
+        action="store_true",
+        help="text waveform display.",
+    )
+
     args = parser.parse_args()
 
-    keysight_daq_runner(args.config)
+    keysight_daq_runner(args.config, args.display_wav)
