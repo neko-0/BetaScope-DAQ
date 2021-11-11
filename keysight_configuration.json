@@ -1,0 +1,11 @@
+{
+  "output_path" : "./test_daq/",
+  "nevents" : 1000,
+  "ip_address" : "192.168.1.12",
+  "enable_channels" : [2,3],
+  "trigger_setting" : {
+      "channel" : 3,
+      "slope" : "POS",
+      "threshold" : 0.02
+    }
+}

@@ -20,6 +20,8 @@ setuptools.setup(
         "coloredlogs",
         "configparser",
         "matplotlib",
+        "h5py",
+        "tqdm",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

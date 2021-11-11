@@ -2,8 +2,10 @@
 
 ## Installation
 
+Simply running pip install.
+
 ```
-pip install -e .
+python -m pip install -e .
 ```
 
 ## Running the DAQ

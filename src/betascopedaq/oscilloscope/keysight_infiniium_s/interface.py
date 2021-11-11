@@ -67,23 +67,43 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
     def close(self):
         self.inst.close()
 
-    def enable_channel(self):
-        pass
+    def enable_channel(self, channel, status):
+        self.write(f":CHAN{channel}:COMM {status}")
+        self.write(f":CHAN{channel}:DISP {status}")
 
-    def get_waveform(self):
-        pass
+    def get_waveform(self, channel, format="text", *args, **kwargs):
+        methods = {"text": self.get_text_waveform}
+        try:
+            return methods[format](channel, *args, **kwargs)
+        except KeyError as _error:
+            raise KeyError(f"does not support {format=}.") from _error
 
-    def initialize(self, ip_address, trigger_settings):
-        self.connect(ip_address, *args, **kwargs)
-        self.prepare_acquisition()
-        if self.threadpool is None:
-            self.threadpool = concurrent.futures.ThreadPoolExecutor(self.nthread)
+    def initialize(self, ip_address, trigger_settings={}):
+        if self.connect(ip_address):
+            trigger_settings.setdefault("channel", 3)
+            trigger_settings.setdefault("slope", "POS")
+            trigger_settings.setdefault("threshold", 0.01)
+            self.set_trigger(**trigger_settings)
+            self.prepare_acquisition()
+            if self.threadpool is None:
+                self.threadpool = concurrent.futures.ThreadPoolExecutor(self.nthread)
+            return True
+        else:
+            return False
 
     def reset(self):
-        pass
+        """
+        NOT a true reset! just clearing
+        """
+        self.write("*CLS")
 
     def wait_trigger(self):
-        pass
+        self.instrument.clear()
+        complete_status = self.query("*CLS;*OPC?")
+        assert complete_status == "1"
+        complete_status = self.query(":DIGitize;*OPC?")
+
+        return complete_status
 
     def connect(self, ip_address, prefix="TCPIP0", suffix="inst0::INSTR"):
         self.ip_address = ip_address
@@ -98,10 +118,13 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
             log.info("Connected to Keysight Infinium Scope.")
         else:
             log.critical(f"Unable to connect with IP={self.ip_address}")
+            return False
 
         self.instrument.timeout = self.timeout
         self.read_termination = "\n"
         self.write_termination = "\n"
+
+        return True
 
     def reopen_resource(self):
         log.info(f"{self.__class__.__name__} reopen, do nothing.")
@@ -114,7 +137,14 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.acquisition_setting()
         """
 
-    def set_trigger(self, channel, slope, threshold, sweep_mode="TRIG"):
+    def set_trigger(
+        self,
+        channel=3,
+        slope="POS",
+        threshold=0.01,
+        sweep_mode="TRIG",
+        trig_type="EDGE",
+    ):
         """
         Method for setting trigger arming.
 
@@ -131,11 +161,14 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
             sweep_mode: str, default = 'TRIG'
                 sweeping mode.
 
+            trig_type : str, default = "EDGE"
+                trigger type
+
         Return
             no return
         """
         self.write(f":TRIG:EDGE:SOUR CHAN{channel}")
-        self.write(":TRIG:MODE EDGE")  # setting edge trigger type
+        self.write(f":TRIG:MODE {trig_type}")  # setting edge trigger type
 
         slope_types = ["POS", "NEG"]
         if slope not in slope_types:
@@ -207,13 +240,6 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
 
         log.info(f"Number of segments = {self.nsegments}")
 
-    def waiting_for_next_wave(self):
-        self.instrument.clear()
-        self.query("*CLS;*OPC?")
-        data = self.query(":DIG;*OPC?")
-
-        return data
-
     def save_waveform_local(self, outFileName, i_event):
         """
         saving the waveform to the local disk C:\\Users\\Administrator\\Desktop\\. The format will be .bin
@@ -224,11 +250,11 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         out = f"{outFileName}{i_event,0:05d}"
         self.write(f":DISK:SAVE:WAV ALL,'{out}',BIN,ON")
 
-    def raw_ascii_waveform(self, channel):
+    def raw_text_waveform(self, channel):
         """
-        Get ascii waveform from a channel remotely
+        Get waveform in plain text format from a channel remotely
         """
-        self.query(f":WAV:SOUR CHAN{channel};*OPC?") # set channel source
+        self.query(f":WAV:SOUR CHAN{channel};*OPC?")  # set channel source
         output = {}
         output["npts"] = int(self.query(":WAV:POIN?"))
         output["xorigin"] = self.query(":WAV:XOR?;*OPC?").split(";")[0]
@@ -236,7 +262,11 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         output["waveform"] = self.query(":WAV:DATA?")
         return output
 
-    def parse_ascii_waveform(self, data):
+    def parse_text_waveform(self, data):
+        """
+        Generator that parsing the waveform from raw_text_waveform().
+        return time and vertical/voltage traces.
+        """
         xorigin = float(data["xorigin"])
         xincrement = float(data["xincrement"])
         npts = int(data["npts"])
@@ -246,16 +276,19 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         log.debug(f"total points (x n-segments) {total_pts}")
 
         # the data from 'get_ascii_waveform' is a string seperated by comma
-        waveform = data["waveform"].split(",")
-        waveform = np.asarray(list(map(float, waveform[:-1])))
+        waveform = data["waveform"].split(",")[:-1]  # last element is empty
+        waveform = np.asarray(list(map(float, waveform)))
+
+        # the size of the waveform will be npts * nsegments
+        assert len(waveform) == total_pts
 
         for i in range(self.nsegments):
-            t_output = np.arange(xorigin, xorigin+npts*xincrement, xincrement)
-            v_output = waveform[start_pt:start_pt+npts]
+            t_output = np.arange(xorigin, xorigin + npts * xincrement, xincrement)
+            v_output = waveform[start_pt : start_pt + npts]
             start_pt += npts
             yield t_output, v_output
 
-    def get_ascii_waveform_remote(self, channels):
+    def get_text_waveform(self, channels):
         """
         get waveform in ascii format and send to remote PC
 
@@ -267,14 +300,28 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         if not isinstance(channels, list):
             raise ValueError(f"channles need to be list, received {type(channels)}")
 
+        requsted_waveforms = {}
         output = {}
+        # getting the first channel
+        future_wav = self.threadpool.submit(self.raw_text_waveform, channels[0])
+        requsted_waveforms[f"ch{channels[0]}"] = future_wav
         for channel in channels:
-            output[f"ch{channel}"] = []
-            raw_waveform = self.raw_ascii_waveform(channel)
-            for wav in self.parse_ascii_waveform(raw_waveform):
-                output[f"ch{channel}"].append(wav)
+            lookup = f"ch{channel}"
+            if lookup in requsted_waveforms:
+                wav_future = requsted_waveforms.pop(lookup)
+                wav = self.parse_text_waveform(wav_future.result())
+                output[lookup] = list(wav)
+            else:
+                future_wav = self.threadpool.submit(self.raw_text_waveform, channel)
+                requsted_waveforms[f"ch{channel}"] = future_wav
+
+        if lookup in requsted_waveforms:
+            wav_future = requsted_waveforms.pop(lookup)
+            wav = self.parse_text_waveform(wav_future.result())
+            output[lookup] = list(wav)
 
         return output
+
 
 class KeysightScope:
     """
