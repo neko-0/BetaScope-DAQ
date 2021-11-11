@@ -106,7 +106,15 @@ if __name__ == "__main__":
 
     pool = mp.Pool()
     for file in files:
-        pool.apply_async(unpack_seg, args=(file, chList, user_args.n, user_args.s,))
+        pool.apply_async(
+            unpack_seg,
+            args=(
+                file,
+                chList,
+                user_args.n,
+                user_args.s,
+            ),
+        )
     pool.close()
     pool.join()
     # unpack_seg(user_args.f, chList, user_args.n, user_args.s)

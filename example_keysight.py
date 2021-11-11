@@ -19,12 +19,17 @@ def keysight_daq_runner(config_file):
 
     # construct scope instance
     scope = betascopedaq.KeysightScope()
+    scope.nsegments = config["nsegments"]
 
     if not scope.initialize(config["ip_address"], config["trigger_setting"]):
         raise IOError("cannot connect to scope!")
 
     for channel in config["enable_channels"]:
         scope.enable_channel(channel, "ON")
+
+    # for commands that are not implemented, you can directly send to the scope
+    scope.write(f":TIMebase:RANGe {config['time_ranges']}")
+    scope.write(f":QCQ:SRAT:DIG {config['sampling_rate']}")
 
     # prepare output files
     output_path = pathlib.Path(f"{config['output_path']}")
@@ -34,8 +39,9 @@ def keysight_daq_runner(config_file):
     # running waveform acquisition
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
         nevents = range(config["nevents"])
+        pbar = tqdm.tqdm(total=nevents * nsegments, unit="evt", dynamic_ncols=True)
         evt_counter = 0
-        for i_event in tqdm.tqdm(nevents):
+        for i_event in nevents:
             trig_status = None
             while trig_status != "1":
                 trig_status = scope.wait_trigger()

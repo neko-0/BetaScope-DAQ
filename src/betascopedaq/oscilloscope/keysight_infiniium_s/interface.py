@@ -68,8 +68,8 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.inst.close()
 
     def enable_channel(self, channel, status):
-        self.write(f":CHAN{channel}:COMM {status}")
-        self.write(f":CHAN{channel}:DISP {status}")
+        self.write(f":CHANnel{channel}:COMMonmode {status}")
+        self.write(f":CHANnel{channel}:DISPlay {status}")
 
     def get_waveform(self, channel, format="text", *args, **kwargs):
         methods = {"text": self.get_text_waveform}
@@ -313,7 +313,7 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
                 output[lookup] = list(wav)
             else:
                 future_wav = self.threadpool.submit(self.raw_text_waveform, channel)
-                requsted_waveforms[f"ch{channel}"] = future_wav
+                requsted_waveforms[lookup] = future_wav
 
         if lookup in requsted_waveforms:
             wav_future = requsted_waveforms.pop(lookup)

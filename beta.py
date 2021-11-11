@@ -285,11 +285,10 @@ class BetaDAQ:
 
                 outROOTFile.i_timestamp[0] = time.time()
                 if (
-                    (event - self.config_file.config.scope_setting.segment_count) == 0
-                    or (event + self.config_file.config.scope_setting.segment_count)
-                    % 100
-                    == 0
-                ):
+                    event - self.config_file.config.scope_setting.segment_count
+                ) == 0 or (
+                    event + self.config_file.config.scope_setting.segment_count
+                ) % 100 == 0:
                     current_100cycle = self.instruments["hv_ps"].CurrentReader(
                         self.config_file.config.dut_setting.ps_ch
                     )
