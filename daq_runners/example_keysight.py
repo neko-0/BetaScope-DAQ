@@ -37,7 +37,6 @@ def keysight_daq_runner(config_file, display_wav):
     # prepare output files
     output_path = pathlib.Path(f"{config['output_path']}")
     output_path.mkdir(parents=True, exist_ok=True)
-    output_file = h5py.File(f"{output_path}/wav_{int(time.time())}.hdf5", "w")
 
     # running waveform acquisition
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
