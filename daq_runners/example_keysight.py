@@ -13,6 +13,7 @@ import plotext as plt
 
 DISPLAY_FIRST_SEG = True
 
+
 def keysight_daq_runner(config_file, display_wav):
 
     # read in JSON configuration file
@@ -63,7 +64,10 @@ def keysight_daq_runner(config_file, display_wav):
                     seg_grp.create_dataset(f"{channel}/voltage", data=v_trace)
                     if display_wav:
                         if channel not in display_ch:
-                            display_ch[channel] = {"time": t_trace.tolist(), "voltage": v_trace.tolist()}
+                            display_ch[channel] = {
+                                "time": t_trace.tolist(),
+                                "voltage": v_trace.tolist(),
+                            }
                         elif not DISPLAY_FIRST_SEG:
                             display_ch[channel]["time"] += t_trace.tolist()
                             display_ch[channel]["voltage"] += v_trace.tolist()
@@ -71,7 +75,9 @@ def keysight_daq_runner(config_file, display_wav):
                 plt.subplots(1, len(display_ch))
                 for i, ch in enumerate(display_ch, start=1):
                     plt.subplot(1, i)
-                    plt.plot(display_ch[ch]["time"], display_ch[ch]["voltage"], label=ch)
+                    plt.plot(
+                        display_ch[ch]["time"], display_ch[ch]["voltage"], label=ch
+                    )
                 plt.show(hide=True)
                 m_plot = plt.get_canvas()
                 plt.clear_figure()

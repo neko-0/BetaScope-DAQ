@@ -1,6 +1,5 @@
 from ..base import Scope
 import pyvisa as visa
-import time
 import numpy as np
 import concurrent.futures
 import logging, coloredlogs
@@ -258,16 +257,24 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         output["npts"] = int(self.query(":WAV:POIN?"))
         output["xorigin"] = self.query(":WAV:XOR?;*OPC?").split(";")[0]
         output["xincrement"] = self.query(":WAV:XINC?;*OPC?").split(";")[0]
-        output["waveform"] = self.query(":WAV:DATA?")
+        output["waveform"] = self.query(":WAV:DATA?").rstrip(",")
+        output["ttag"] = self.query(":WAV:SEGM:XLIS? TTAG").rstrip(",")
+        output["relx"] = self.query(":WAV:SEGM:XLIS? RELX").rstrip(",")
+        output["absx"] = self.query(":WAV:SEGM:XLIS? ABSX").rstrip(",")
         self.query("*OPC?")
         return output
 
-    def parse_text_waveform(self, data):
+    def parse_text_waveform(self, data, reco_segment=True):
         """
         Generator that parsing the waveform from raw_text_waveform().
         return time and vertical/voltage traces.
         """
-        xorigin = float(data["xorigin"])
+        if reco_segment:
+            xorigin = list(map(float, data["absx"].split(",")))
+            t_trace_start = xorigin[0]
+        else:
+            xorigin = float(data["xorigin"])
+            t_trace_start = xorigin
         xincrement = float(data["xincrement"])
         npts = int(data["npts"])
         total_pts = npts * self.nsegments
@@ -276,19 +283,21 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         log.debug(f"total points (x n-segments) {total_pts}")
 
         # the data from 'get_ascii_waveform' is a string seperated by comma
-        waveform = data["waveform"].split(",")[:-1]  # last element is empty
+        waveform = data["waveform"].split(",")
         waveform = np.asarray(list(map(float, waveform)))
 
         # the size of the waveform will be npts * nsegments
         assert len(waveform) == total_pts
 
-        t_trace_start = xorigin
         for i in range(self.nsegments):
-            t_trace_end = t_trace_start + npts * xincrement
-            t_output = np.arange(t_trace_start, t_trace_end, xincrement)
+            t_trace_end = t_trace_start + npts * xincrement + xincrement
+            t_output = np.arange(t_trace_start, t_trace_end, xincrement)[:npts]
             v_output = waveform[start_pt : start_pt + npts]
             start_pt += npts
-            t_trace_start = t_trace_end
+            if reco_segment and i + 1 < self.nsegments:
+                t_trace_start = xorigin[i + 1]
+            else:
+                t_trace_start = t_trace_end
             yield t_output, v_output
 
     def get_text_waveform(self, channels):
