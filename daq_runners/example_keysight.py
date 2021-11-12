@@ -78,10 +78,8 @@ def keysight_daq_runner(config_file, display_wav):
                     plt.plot(
                         display_ch[ch]["time"], display_ch[ch]["voltage"], label=ch
                     )
-                plt.show(hide=True)
-                m_plot = plt.get_canvas()
+                plt.show()
                 plt.clear_figure()
-                print(m_plot)
             pbar.update(nsegments)
 
 
