@@ -34,7 +34,7 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.resource_manager = visa.ResourceManager()
         self._read_termination = None
         self._write_termination = None
-        self.nthread = 8
+        self.nthread = 4
         self.threadpool = None
 
     @property
