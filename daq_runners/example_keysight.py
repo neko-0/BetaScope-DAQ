@@ -25,6 +25,9 @@ def keysight_daq_runner(config_file, display_wav):
     nsegments = config["nsegments"]
     scope.nsegments = nsegments
 
+    for channel in [1,2,3,4]:
+        scope.enable_channel(channel, "OFF")
+
     if not scope.initialize(config["ip_address"], config["trigger_setting"]):
         raise IOError("cannot connect to scope!")
 
