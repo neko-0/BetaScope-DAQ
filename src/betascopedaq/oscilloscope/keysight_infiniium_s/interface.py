@@ -15,7 +15,7 @@ class KeysightScopeInterfaceBase(Scope):
         self.instrument = None
         self.active_channels = []
         self.nsegments = 20
-        self.timeout = 10000
+        self.timeout = 100000
 
     @property
     def n_active_channels(self):
@@ -66,8 +66,8 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
     def close(self):
         self.inst.close()
 
-    def enable_channel(self, channel, status):
-        self.query(f":CHANnel{channel}:COMMonmode {status};*OPC?")
+    def enable_channel(self, channel, status, comm=0):
+        self.query(f":CHANnel{channel}:COMMonmode {comm};*OPC?")
         self.query(f":CHANnel{channel}:DISPlay {status};*OPC?")
 
     def get_waveform(self, channel, format="text", *args, **kwargs):
@@ -218,9 +218,12 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         """
         self.write("*CLS")
         self.write(":STOP")
-        self.write(":ACQ:MODE SEGM")  # Segmentation mode
-        # self.write(":ACQ:MODE RTIMe") # Real time mode
-        self.write(f"ACQ:SEGM:COUN {self.nsegments}")
+        if self.nsegments == 1:
+           self.write(":ACQ:MODE RTIMe") # Real time mode
+        else:
+           self.write(":ACQ:MODE SEGM")  # Segmentation mode
+           self.write(f"ACQ:SEGM:COUN {self.nsegments}")
+           self.write(":WAV:SEGM:ALL ON")
         self.write(":ACQ:BAND MAX")
         self.write(":ACQ:INT OFF")
         self.write(":ACQ:AVER OFF")
@@ -228,7 +231,6 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.write(":ACQ:COMP 100")
         self.write(":WAV:FORM ASC")
         self.write(":WAV:STR ON")
-        self.write(":WAV:SEGM:ALL ON")
         self.write("*SRE 7")
         self.write("*SRE 5")
         self.write("*SRE 0")
@@ -258,9 +260,14 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         output["xorigin"] = self.query(":WAV:XOR?;*OPC?").split(";")[0]
         output["xincrement"] = self.query(":WAV:XINC?;*OPC?").split(";")[0]
         output["waveform"] = self.query(":WAV:DATA?").rstrip(",")
-        output["ttag"] = self.query(":WAV:SEGM:XLIS? TTAG").rstrip(",")
-        output["relx"] = self.query(":WAV:SEGM:XLIS? RELX").rstrip(",")
-        output["absx"] = self.query(":WAV:SEGM:XLIS? ABSX").rstrip(",")
+        if self.nsegments == 1:
+           output["ttag"] = None
+           output["relx"] = None
+           output["absx"] = None
+        else:
+           output["ttag"] = self.query(":WAV:SEGM:XLIS? TTAG").rstrip(",")
+           output["relx"] = self.query(":WAV:SEGM:XLIS? RELX").rstrip(",")
+           output["absx"] = self.query(":WAV:SEGM:XLIS? ABSX").rstrip(",")
         self.query("*OPC?")
         return output
 
@@ -269,6 +276,9 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         Generator that parsing the waveform from raw_text_waveform().
         return time and vertical/voltage traces.
         """
+        if self.nsegments == 1:
+            reco_segment = False
+
         if reco_segment:
             xorigin = list(map(float, data["absx"].split(",")))
             t_trace_start = xorigin[0]

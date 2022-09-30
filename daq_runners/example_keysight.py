@@ -35,12 +35,14 @@ def keysight_daq_runner(config_file, display_wav):
         scope.enable_channel(channel, "ON")
 
     # for commands that are not implemented, you can directly send to the scope
+    scope.write(f":ACQ:BAND {config['bandwidth']}")
     scope.write(f":TIMebase:RANGe {config['time_ranges']}")
-    # scope.write(f":ACQuire:SRATe:ANALog {config['sampling_rate']}")
-
+    scope.write(f":ACQuire:SRATe {config['sampling_rate']}")
     # prepare output files
     output_path = pathlib.Path(f"{config['output_path']}")
     output_path.mkdir(parents=True, exist_ok=True)
+
+    timestamp = time.time() # just initialize it with staring time
 
     # running waveform acquisition
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
@@ -50,6 +52,7 @@ def keysight_daq_runner(config_file, display_wav):
             trig_status = None
             while trig_status != "1":
                 trig_status = scope.wait_trigger()
+                timestamp = time.time()
             waveforms = scope.get_waveform(config["enable_channels"])
 
             display_ch = {}
@@ -65,6 +68,7 @@ def keysight_daq_runner(config_file, display_wav):
                     t_trace, v_trace = wav
                     seg_grp.create_dataset(f"{channel}/time", data=t_trace)
                     seg_grp.create_dataset(f"{channel}/voltage", data=v_trace)
+                    seg_grp.create_dataset(f"{channel}/timestamp", data=timestamp)
                     if display_wav:
                         if channel not in display_ch:
                             display_ch[channel] = {
