@@ -24,6 +24,7 @@ setuptools.setup(
         "plotext",
         "h5py",
         "tqdm",
+        "pyserial-asyncio",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
