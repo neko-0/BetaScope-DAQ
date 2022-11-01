@@ -1,5 +1,4 @@
-from ..tenney_chamber import f4t_controller
-from ..file_io import ROOTClass
+import betascopedaq as betaDAQ
 
 import argparse
 import time
@@ -26,9 +25,9 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
             wait time (in sec) for temperature target 1/2.
     """
 
-    f4t = f4t_controller.F4T_Controller()
+    f4t = betaDAQ.F4T_Controller()
 
-    ofile = ROOTClass.ROOTFileOutput("user_data/temperature_cycle.root", [])
+    ofile = betaDAQ.ROOTFileOutput("user_data/temperature_cycle.root", [])
     ofile.create_branch("temperature", "D")
     ofile.create_branch("humidity", "D")
     ofile.create_branch("cycle", "I")
