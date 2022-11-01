@@ -3,7 +3,7 @@ import betascopedaq as betaDAQ
 import argparse
 import time
 import logging
-import tqdm
+from tqdm import tqdm
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
