@@ -129,3 +129,5 @@ if __name__ == "__main__":
     )
 
     argv = argparser.parse_args()
+
+    temperature_cycle(argv.numCycle, argv.t1, argv.t2, argv.w1, argv.w2)
