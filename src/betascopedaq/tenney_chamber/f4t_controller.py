@@ -7,7 +7,7 @@ coloredlogs.install(level="INFO", logger=log)
 import socket
 import time
 import multiprocessing as mp
-from pymodbus.client.sync import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient
 
 
 class F4T_Controller:
