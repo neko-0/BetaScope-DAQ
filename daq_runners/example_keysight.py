@@ -43,17 +43,28 @@ def keysight_daq_runner(config_file, display_wav):
     output_path.mkdir(parents=True, exist_ok=True)
 
     timestamp = time.time() # just initialize it with staring time
+    wait_timeout = 10
 
     # running waveform acquisition
     with h5py.File(f"{output_path}/{int(time.time())}.hdf5", "a") as output_file:
         nevents = config["nevents"]
         pbar = tqdm.tqdm(total=int(nevents * nsegments), unit="evt", dynamic_ncols=True)
-        for i_event in range(nevents):
+        i_event = 0
+        while i_event < nevents:
             trig_status = None
+            wait_time = time.time()
             while trig_status != "1":
                 trig_status = scope.wait_trigger()
                 timestamp = time.time()
-            waveforms = scope.get_waveform(config["enable_channels"])
+                if (timestamp - wait_time) > wait_timeout:
+                    print(f"waiting too long ({wait_timeout}s) {trig_status}")
+                    wait_time = timestamp
+            try:
+                waveforms = scope.get_waveform(config["enable_channels"])
+            except IOError:
+                print("error in getting waveform")
+                scope.reset()
+                continue
 
             display_ch = {}
             # storing the waveforms
@@ -88,7 +99,7 @@ def keysight_daq_runner(config_file, display_wav):
                 plt.show()
                 plt.clear_figure()
             pbar.update(nsegments)
-
+            i_event += 1
 
 if __name__ == "__main__":
 
