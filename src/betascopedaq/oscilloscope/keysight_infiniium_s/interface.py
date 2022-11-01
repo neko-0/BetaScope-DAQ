@@ -55,7 +55,10 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.instrument.write_termination = input
 
     def query(self, content):
-        return self.instrument.query(content)
+        try:
+            return self.instrument.query(content)
+        except visa.errors.VisaIOError:
+            raise IOError("query error")
 
     def write(self, content):
         self.instrument.write(content)
@@ -95,6 +98,7 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         NOT a true reset! just clearing
         """
         self.write("*CLS")
+        self.write(":RUN")
 
     def wait_trigger(self):
         self.instrument.clear()
