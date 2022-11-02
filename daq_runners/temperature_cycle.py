@@ -27,12 +27,13 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
 
     f4t = betaDAQ.F4T_Controller()
 
-    ofile = betaDAQ.ROOTFileOutput("user_data/temperature_cycle.root", [])
-    ofile.create_branch("temperature", "D")
-    ofile.create_branch("humidity", "D")
-    ofile.create_branch("cycle", "I")
 
     for cycle_i in range(1, ncycle + 1):
+
+        ofile = betaDAQ.ROOTFileOutput("user_data/temperature_cycle.root", [])
+        ofile.create_branch("temperature", "D")
+        ofile.create_branch("humidity", "D")
+        ofile.create_branch("cycle", "I")
 
         logger.info(f"Starting cycle {cycle_i}")
 
@@ -41,15 +42,23 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
         logger.info(f"Set temperature to {temp1}C")
         f4t.set_temperature(argv.t1)
         while abs(f4t.get_temperature() - temp1) >= 1.5:
-            ofile.additional_branch["temperature"][0] = f4t.get_temperature()
-            ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            try:
+                ofile.additional_branch["temperature"][0] = f4t.get_temperature()
+                ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            except ValueError:
+                ofile.additional_branch["temperature"][0] = -999
+                ofile.additional_branch["humidity"][0] = -999
             ofile.i_timestamp[0] = time.time()
             ofile.Fill()
 
         logger.info(f"Staying for {wait1} sec")
         for _ in tqdm(range(int(wait1)), leave=False, desc="waiting..."):
-            ofile.additional_branch["temperature"][0] = f4t.get_temperature()
-            ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            try:
+                ofile.additional_branch["temperature"][0] = f4t.get_temperature()
+                ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            except ValueError:
+                ofile.additional_branch["temperature"][0] = -999
+                ofile.additional_branch["humidity"][0] = -999
             ofile.i_timestamp[0] = time.time()
             ofile.Fill()
             time.sleep(1)
@@ -57,22 +66,31 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
         logger.info(f"Setting temperature to {temp2}")
         f4t.set_temperature(argv.t2)
         while abs(f4t.get_temperature() - temp2) >= 1.5:
-            ofile.additional_branch["temperature"][0] = f4t.get_temperature()
-            ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            try:
+                ofile.additional_branch["temperature"][0] = f4t.get_temperature()
+                ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            except ValueError:
+                ofile.additional_branch["temperature"][0] = -999
+                ofile.additional_branch["humidity"][0] = -999
             ofile.i_timestamp[0] = time.time()
             ofile.Fill()
 
         logger.info(f"Staying for {wait2} sec")
         for _ in tqdm(range(int(wait2)), leave=False, desc="waiting..."):
-            ofile.additional_branch["temperature"][0] = f4t.get_temperature()
-            ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            try:
+                ofile.additional_branch["temperature"][0] = f4t.get_temperature()
+                ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+            except ValueError:
+                ofile.additional_branch["temperature"][0] = -999
+                ofile.additional_branch["humidity"][0] = -999
             ofile.i_timestamp[0] = time.time()
             ofile.Fill()
             time.sleep(1)
 
         logger.info(f"cycle {cycle_i} is finished, move to next cycle")
 
-    ofile.Close()
+        ofile.Close()
+
     logger.info("all cycle are finished. Set 20C")
     f4t.set_temperature(20)
 
