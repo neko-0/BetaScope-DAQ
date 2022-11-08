@@ -10,6 +10,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def write_helper(f4t, ofile):
+    try:
+        ofile.additional_branch["temperature"][0] = f4t.get_temperature()
+        ofile.additional_branch["humidity"][0] = f4t.get_humidity()
+    except ValueError:
+        ofile.additional_branch["temperature"][0] = -999
+        ofile.additional_branch["humidity"][0] = -999
+    ofile.i_timestamp[0] = time.time()
+    ofile.Fill()
+
+
 def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
     """
     performing temperature cycle
@@ -24,17 +35,11 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
         wait1/2 : int
             wait time (in sec) for temperature target 1/2.
     """
-    def write_helper(f4t, ofile):
-        try:
-            ofile.additional_branch["temperature"][0] = f4t.get_temperature()
-            ofile.additional_branch["humidity"][0] = f4t.get_humidity()
-        except ValueError:
-            ofile.additional_branch["temperature"][0] = -999
-            ofile.additional_branch["humidity"][0] = -999
-        ofile.i_timestamp[0] = time.time()
-        ofile.Fill()
 
     f4t = betaDAQ.F4T_Controller()
+
+    temp_list = [temp1, temp2]
+    wait_list = [wait1, wait2]
 
     for cycle_i in range(1, ncycle + 1):
 
@@ -47,27 +52,17 @@ def temperature_cycle(ncycle, temp1, temp2, wait1, wait2):
 
         ofile.additional_branch["cycle"][0] = cycle_i + 1
 
-        logger.info(f"Set temperature to {temp1}C")
-        f4t.set_temperature(argv.t1)
-        while abs(f4t.get_temperature() - temp1) >= 1.5:
-            write_helper(f4t, ofile)
-            time.sleep(1)
+        for c_temp, c_wait in zip(temp_list, wait_list):
+            logger.info(f"Set temperature to {c_temp}C")
+            f4t.set_temperature(c_temp)
+            while abs(f4t.get_temperature() - c_temp) >= 1.5:
+                write_helper(f4t, ofile)
+                time.sleep(1)
 
-        logger.info(f"Staying for {wait1} sec")
-        for _ in tqdm(range(int(wait1)), leave=False, desc="waiting..."):
-            write_helper(f4t, ofile)
-            time.sleep(1)
-
-        logger.info(f"Setting temperature to {temp2}")
-        f4t.set_temperature(argv.t2)
-        while abs(f4t.get_temperature() - temp2) >= 1.5:
-            write_helper(f4t, ofile)
-            time.sleep(1)
-
-        logger.info(f"Staying for {wait2} sec")
-        for _ in tqdm(range(int(wait2)), leave=False, desc="waiting..."):
-            write_helper(f4t, ofile)
-            time.sleep(1)
+            logger.info(f"Staying for {c_wait} sec")
+            for _ in tqdm(range(int(c_wait)), leave=False, desc="waiting..."):
+                write_helper(f4t, ofile)
+                time.sleep(1)
 
         logger.info(f"cycle {cycle_i} is finished, move to next cycle")
 
