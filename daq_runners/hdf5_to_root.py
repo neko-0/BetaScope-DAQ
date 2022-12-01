@@ -110,14 +110,14 @@ def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
                 YInc[ch] = scope_data[ch][ch_path].attrs["YInc"]
                 XOrg[ch] = scope_data[ch][ch_path].attrs["XOrg"]
                 XInc[ch] = scope_data[ch][ch_path].attrs["XInc"]
+                t_traces[ch][:] = np.arange(
+                    XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]
+                )
             for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
                 for ch in channels:
                     ch_path = f"Waveforms/Channel {ch}"
                     seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
                     v_traces[ch][:] = scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch]
-                    t_traces[ch][:] = np.arange(
-                        XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]
-                    )
                 ttree.Fill()
     tfile.Write()
     tfile.Close()
