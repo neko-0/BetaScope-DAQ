@@ -28,7 +28,7 @@ def keysight_daq_runner(config_file, display_wav):
     if not scope.initialize(config["ip_address"], config["trigger_setting"]):
         raise IOError("cannot connect to scope!")
 
-    for channel in [1,2,3,4]:
+    for channel in [1, 2, 3, 4]:
         scope.enable_channel(channel, "OFF")
 
     for channel in config["enable_channels"]:
@@ -42,7 +42,7 @@ def keysight_daq_runner(config_file, display_wav):
     output_path = pathlib.Path(f"{config['output_path']}")
     output_path.mkdir(parents=True, exist_ok=True)
 
-    timestamp = time.time() # just initialize it with staring time
+    timestamp = time.time()  # just initialize it with staring time
     wait_timeout = 10
 
     # running waveform acquisition
@@ -100,6 +100,7 @@ def keysight_daq_runner(config_file, display_wav):
                 plt.clear_figure()
             pbar.update(nsegments)
             i_event += 1
+
 
 if __name__ == "__main__":
 
