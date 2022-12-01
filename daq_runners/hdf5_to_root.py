@@ -92,6 +92,7 @@ if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--mode", help="parsing mode", dest="mode")
+    argparser.add_argument("--directory", help="file direcotry", dest="directory")
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
 
