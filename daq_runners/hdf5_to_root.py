@@ -73,11 +73,8 @@ class ScopeH5:
 
 
 def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
-    if nfile < 0:
-        nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
     tfile = ROOT.TFile(f"{prefix}.root", "RECREATE")
     ttree = ROOT.TTree("wfm", "from Keysight H5")
-
     # initializing branches
     v_traces = {}
     t_traces = {}
@@ -93,7 +90,7 @@ def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
             ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
             ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
 
-    for i in tqdm(range(start_findex, nfile), unit="files"):
+    for i in tqdm(range(start_findex, nfile + start_findex), unit="files"):
         try:
             scope_data = ScopeH5(directory, prefix, channels, i)
         except FileNotFoundError:
@@ -123,6 +120,18 @@ def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
     tfile.Close()
 
 
+def run_scope_h5_to_root(
+    directory, prefix, channels, start_findex=0, nfile=-1, merge=False
+):
+    if nfile < 0:
+        nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
+    if merge:
+        scope_h5_to_root(directory, prefix, channels, start_findex, nfile)
+    else:
+        for i in range(nfile):
+            scope_h5_to_root(directory, prefix, channels, start_findex + i, 1)
+
+
 # ==============================================================================
 
 if __name__ == "__main__":
@@ -135,11 +144,16 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--start", help="start findex", type=int, default=0, dest="start"
     )
+    argparser.add_argument(
+        "--merge", help="merging all files", dest="merge", action="store_true"
+    )
 
     argv = argparser.parse_args()
     if argv.mode == "scope":
         ch = [int(i) for i in argv.channels.split(",")]
-        scope_h5_to_root(argv.directory, argv.prefix, ch, argv.start)
+        run_scope_h5_to_root(
+            argv.directory, argv.prefix, ch, argv.start, merge=argv.merge
+        )
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
         print(files)
