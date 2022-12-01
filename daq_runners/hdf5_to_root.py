@@ -58,7 +58,7 @@ class ScopeH5:
     def __getitem__(self, key):
         return self._opened_f[key]
 
-    def __enter__(self, *exc_info):
+    def __enter__(self):
         self._opened_f = {
             ch: h5py.File(
                 f"{self.directory}/{self.prefix}_ch{ch}{self.findex:05d}.h5", "r"
@@ -67,7 +67,7 @@ class ScopeH5:
         }
         return self._opened_f
 
-    def __exit__(self):
+    def __exit__(self, *exc_info):
         for f in self._opened_f.values():
             f.close()
 
