@@ -1,8 +1,9 @@
 import h5py
 import glob
 import ROOT
-import numpy
+import numpy as np
 import argparse
+from tqdm import tqdm
 
 
 def default_hdf5_to_root(fname):
@@ -52,9 +53,9 @@ def scope_h5_to_root(directory, prefix, channels, nfile=-1):
     num_wave = None
     num_pts = None
     num_segment = None
-    for i in range(nfile):
+    for i in tqdm(range(nfile), unit="file"):
         opened_f = {
-            ch: h5_open(f"{directory}/{prefix}_ch{ch}{i:06d}.h5", "r")
+            ch: h5_open(f"{directory}/{prefix}_ch{ch}{i:05d}.h5", "r")
             for ch in channels
         }
         if i == 0:
@@ -67,21 +68,21 @@ def scope_h5_to_root(directory, prefix, channels, nfile=-1):
             for ch in channels:
                 v_traces[ch] = np.zeros(num_pts, dtype=np.double)
                 t_traces[ch] = np.zeros(num_pts, dtype=np.double)
-                ttree.Branch(f"w{ch}", v_traces[ch])
-                ttree.Branch(f"t{ch}", t_traces[ch])
-        for seg in num_segment:
+                ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
+                ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
+        for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
             for ch in channels:
                 ch_path = f"Waveforms/Channel {ch}"
                 seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
                 # probably optimize repeat YInc,YOrg,XOrg,XInc lookup
-                YOrg = opened_f[ch_path].attrs["YOrg"]
-                YInc = opened_f[ch_path].attrs["YInc"]
-                XOrg = opened_f[ch_path].attrs["XOrg"]
-                XInc = opened_f[ch_path].attrs["XInc"]
-                v_traces[ch][:] = opened_f[seg_path][:] * YInc + YOrg
+                YOrg = opened_f[ch][ch_path].attrs["YOrg"]
+                YInc = opened_f[ch][ch_path].attrs["YInc"]
+                XOrg = opened_f[ch][ch_path].attrs["XOrg"]
+                XInc = opened_f[ch][ch_path].attrs["XInc"]
+                v_traces[ch][:] = opened_f[ch][seg_path][:] * YInc + YOrg
                 t_traces[ch][:] = np.arange(XOrg, XOrg + num_pts * XInc, XInc)
             ttree.Fill()
-        for f in opened_f.items():
+        for f in opened_f.values():
             f.close()
     tfile.Write()
     tfile.Close()
