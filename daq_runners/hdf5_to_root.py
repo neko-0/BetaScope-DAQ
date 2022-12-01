@@ -54,7 +54,8 @@ def scope_h5_to_root(directory, prefix, channels, nfile=-1):
     num_segment = None
     for i in range(nfile):
         opened_f = {
-            ch: h5_open(f"{directory}/{prefix}_ch{ch}{i:06d}", "r") for ch in channels
+            ch: h5_open(f"{directory}/{prefix}_ch{ch}{i:06d}.h5", "r")
+            for ch in channels
         }
         if i == 0:
             # initializing branches
