@@ -3,7 +3,12 @@ import glob
 import ROOT
 import numpy as np
 import argparse
+import logging
 from tqdm import tqdm
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def default_hdf5_to_root(fname):
@@ -42,48 +47,78 @@ def default_hdf5_to_root(fname):
 
 
 # ==============================================================================
-def scope_h5_to_root(directory, prefix, channels, nfile=-1):
+class ScopeH5:
+    def __init__(self, diretory, prefix, channels, findex):
+        self.diretory = diretory
+        self.prefix = prefix
+        self.channels = channels
+        self.findex = findex
+        self._opened_f = {}
+
+    def __getitem__(self, key):
+        return self._opened_f[key]
+
+    def __enter__(self):
+        self._opened_f = {
+            ch: h5py.File(
+                f"{self.directory}/{self.prefix}_ch{ch}{self.findex:05d}.h5", "r"
+            )
+            for ch in self.channels
+        }
+        return self._opened_f
+
+    def __exit__(self):
+        for f in self._opened_f.values():
+            f.close()
+
+
+def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
     if nfile < 0:
         nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
-    h5_open = h5py.File
     tfile = ROOT.TFile(f"{prefix}.root", "RECREATE")
     ttree = ROOT.TTree("wfm", "from Keysight H5")
+
+    # initializing branches
     v_traces = {}
     t_traces = {}
-    num_wave = None
-    num_pts = None
-    num_segment = None
-    for i in tqdm(range(nfile), unit="file"):
-        opened_f = {
-            ch: h5_open(f"{directory}/{prefix}_ch{ch}{i:05d}.h5", "r")
-            for ch in channels
-        }
-        if i == 0:
-            # initializing branches
-            ch = channels[0]
-            ch_lookup = f"Waveforms/Channel {ch}"
-            num_wave = opened_f[ch]["Waveforms"].attrs["NumWaveforms"]
-            num_pts = opened_f[ch][ch_lookup].attrs["NumPoints"]
-            num_segment = opened_f[ch][ch_lookup].attrs["NumSegments"]
-            for ch in channels:
-                v_traces[ch] = np.zeros(num_pts, dtype=np.double)
-                t_traces[ch] = np.zeros(num_pts, dtype=np.double)
-                ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
-                ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
-        for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
+    with ScopeH5(directory, prefix, channels, start_findex) as scope_data:
+        ch = channels[0]
+        ch_lookup = f"Waveforms/Channel {ch}"
+        num_wave = scope_data[ch]["Waveforms"].attrs["NumWaveforms"]
+        num_pts = scope_data[ch][ch_lookup].attrs["NumPoints"]
+        num_segment = scope_data[ch][ch_lookup].attrs["NumSegments"]
+        for ch in channels:
+            v_traces[ch] = np.zeros(num_pts, dtype=np.double)
+            t_traces[ch] = np.zeros(num_pts, dtype=np.double)
+            ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
+            ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
+
+    for i in tqdm(range(start_findex, nfile), unit="files"):
+        try:
+            scope_data = ScopeH5(directory, prefix, channels, i)
+        except FileNotFoundError:
+            logger.warning(f"cannot retrieve all channel data for findex {i}")
+            continue
+        with scope_data:
+            YOrg = {}
+            YInc = {}
+            XOrg = {}
+            XInc = {}
             for ch in channels:
                 ch_path = f"Waveforms/Channel {ch}"
-                seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
-                # probably optimize repeat YInc,YOrg,XOrg,XInc lookup
-                YOrg = opened_f[ch][ch_path].attrs["YOrg"]
-                YInc = opened_f[ch][ch_path].attrs["YInc"]
-                XOrg = opened_f[ch][ch_path].attrs["XOrg"]
-                XInc = opened_f[ch][ch_path].attrs["XInc"]
-                v_traces[ch][:] = opened_f[ch][seg_path][:] * YInc + YOrg
-                t_traces[ch][:] = np.arange(XOrg, XOrg + num_pts * XInc, XInc)
-            ttree.Fill()
-        for f in opened_f.values():
-            f.close()
+                YOrg[ch] = scope_data[ch][ch_path].attrs["YOrg"]
+                YInc[ch] = scope_data[ch][ch_path].attrs["YInc"]
+                XOrg[ch] = scope_data[ch][ch_path].attrs["XOrg"]
+                XInc[ch] = scope_data[ch][ch_path].attrs["XInc"]
+            for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
+                for ch in channels:
+                    ch_path = f"Waveforms/Channel {ch}"
+                    seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
+                    v_traces[ch][:] = scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch]
+                    t_traces[ch][:] = np.arange(
+                        XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]
+                    )
+                ttree.Fill()
     tfile.Write()
     tfile.Close()
 
@@ -97,11 +132,14 @@ if __name__ == "__main__":
     argparser.add_argument("--directory", help="file direcotry", dest="directory")
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
+    argparser.add_argument(
+        "--start", help="start findex", type=int, default=0, dest="start"
+    )
 
     argv = argparser.parse_args()
     if argv.mode == "scope":
         ch = [int(i) for i in argv.channels.split(",")]
-        scope_h5_to_root(argv.directory, argv.prefix, ch)
+        scope_h5_to_root(argv.directory, argv.prefix, ch, argv.start)
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
         print(files)
