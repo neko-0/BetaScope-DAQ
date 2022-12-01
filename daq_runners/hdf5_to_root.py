@@ -48,8 +48,8 @@ def default_hdf5_to_root(fname):
 
 # ==============================================================================
 class ScopeH5:
-    def __init__(self, diretory, prefix, channels, findex):
-        self.diretory = diretory
+    def __init__(self, directory, prefix, channels, findex):
+        self.directory = directory
         self.prefix = prefix
         self.channels = channels
         self.findex = findex
