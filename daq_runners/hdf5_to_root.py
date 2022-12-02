@@ -63,7 +63,7 @@ class ScopeH5:
         self._opened_f = {
             ch: h5py.File(self.compose_fname(ch), "r") for ch in self.channels
         }
-        return self._opened_f
+        return self
 
     def __exit__(self, *exc_info):
         for f in self._opened_f.values():
