@@ -77,6 +77,14 @@ class ScopeH5:
         elif self.format == 2:
             return f"{self.directory}/{self.prefix}{self.findex:05d}.h5"
 
+    def compose_wildcard(self, ch):
+        if self.format == 0:
+            return f"{self.directory}/{self.prefix}_ch{ch}*.h5"
+        elif self.format == 1:
+            return f"{self.directory}/{self.prefix}*_ch{ch}.h5"
+        elif self.format == 2:
+            return f"{self.directory}/{self.prefix}*.h5"
+
 
 def scope_h5_to_root(
     directory, prefix, channels, start_findex=0, nfile=-1, suffix=0, format=0
@@ -141,8 +149,8 @@ def run_scope_h5_to_root(
 ):
     if nfile < 0:
         with ScopeH5(directory, prefix, channels, 1, format) as scope_data:
-            lookup = scope_data.compose_fname(channels[0])
-        nfile = len(glob.glob(f"{lookup}*.h5"))
+            lookup = scope_data.compose_wildcard(channels[0])
+        nfile = len(glob.glob(f"{lookup}".replace))
 
     common_args = (directory, prefix, channels)
     if merge:
