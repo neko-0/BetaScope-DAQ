@@ -157,7 +157,7 @@ def run_scope_h5_to_root(
                 futures.append(
                     pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
                 )
-            for future in as_completedg(futures):
+            for future in as_completed(futures):
                 _ = future.result()
         return
 
