@@ -233,6 +233,7 @@ if __name__ == "__main__":
         "--output", help="output directory", dest="output", default="."
     )
     argparser.add_argument("--joblist", help="job list", dest="joblist")
+    argparser.add_argument("--jobname", help="job name", dest="jobname")
 
     argv = argparser.parse_args()
     if argv.mode == "scope":
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     if argv.mode == "scope-batch":
         with open(argv.joblist) as f:
             jobs = json.load(f)
-        for job in jobs:
+        for job in jobs[argv.jobname]:
             run_scope_h5_to_root(**job)
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
