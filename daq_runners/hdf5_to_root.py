@@ -89,7 +89,7 @@ class ScopeH5:
 def scope_h5_to_root(
     directory, prefix, channels, start_findex=0, nfile=-1, suffix=0, format=0
 ):
-    tfile = ROOT.TFile(f"{prefix}_{suffix}.root", "RECREATE")
+    tfile = ROOT.TFile(f"{prefix}_{suffix}.root", "RECREATE", "", 5)
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
@@ -102,8 +102,8 @@ def scope_h5_to_root(
         num_segment = scope_data[ch][ch_lookup].attrs["NumSegments"]
         logger.info(f"Number of waveform points = {num_pts}")
         for ch in channels:
-            v_traces[ch] = np.zeros(num_pts, dtype=np.double)
-            t_traces[ch] = np.zeros(num_pts, dtype=np.double)
+            v_traces[ch] = np.empty(num_pts, dtype=np.double)
+            t_traces[ch] = np.empty(num_pts, dtype=np.double)
             ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
             ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
 
@@ -124,14 +124,21 @@ def scope_h5_to_root(
                 YInc[ch] = scope_data[ch][ch_path].attrs["YInc"]
                 XOrg[ch] = scope_data[ch][ch_path].attrs["XOrg"]
                 XInc[ch] = scope_data[ch][ch_path].attrs["XInc"]
-                t_traces[ch][:] = np.arange(
-                    XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]
-                )
+                try:
+                    np.copyto(
+                        t_traces[ch],
+                        np.arange(XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]),
+                    )
+                except ValueError:
+                    logger.warning("trace size is different?")
+                    continue
             for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
                 for ch in channels:
                     ch_path = f"Waveforms/Channel {ch}"
                     seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
-                    v_traces[ch][:] = scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch]
+                    np.copyto(
+                        v_traces[ch], scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch]
+                    )
                 ttree.Fill()
     tfile.Write()
     tfile.Close()
