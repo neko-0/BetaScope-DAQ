@@ -61,7 +61,7 @@ class ScopeH5:
 
     def __enter__(self):
         self._opened_f = {
-            ch: h5py.File(self._compose_fname(ch), "r") for ch in self.channels
+            ch: h5py.File(self.compose_fname(ch), "r") for ch in self.channels
         }
         return self._opened_f
 
@@ -69,7 +69,7 @@ class ScopeH5:
         for f in self._opened_f.values():
             f.close()
 
-    def _compose_fname(self, ch):
+    def compose_fname(self, ch):
         if self.format == 0:
             return f"{self.directory}/{self.prefix}_ch{ch}{self.findex:05d}.h5"
         elif self.format == 1:
@@ -140,7 +140,9 @@ def run_scope_h5_to_root(
     use_mp=False,
 ):
     if nfile < 0:
-        nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
+        with ScopeH5(directory, prefix, channels, 1, format) as scope_data:
+            lookup = scope_data.compose_fname(channels[0])
+        nfile = len(glob.glob(f"{lookup}*.h5"))
 
     common_args = (directory, prefix, channels)
     if merge:
