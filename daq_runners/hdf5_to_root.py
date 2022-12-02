@@ -150,7 +150,7 @@ def run_scope_h5_to_root(
     if nfile < 0:
         with ScopeH5(directory, prefix, channels, 1, format) as scope_data:
             lookup = scope_data.compose_wildcard(channels[0])
-        nfile = len(glob.glob(f"{lookup}".replace))
+        nfile = len(glob.glob(f"{lookup}"))
 
     common_args = (directory, prefix, channels)
     if merge:
