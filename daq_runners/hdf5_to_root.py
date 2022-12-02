@@ -157,7 +157,7 @@ def run_scope_h5_to_root(
                 futures.append(
                     pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
                 )
-            for future in as_completed(futures):
+            for future in as_completedg(futures):
                 _ = future.result()
         return
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     argparser.add_argument("--channels", help="channels", dest="channels")
     argparser.add_argument("--format", help="format", default=0, dest="format")
     argparser.add_argument(
-        "--use_mp", help="use MP", dest="use_mp", action="store_true"
+        "--use-mp", help="use MP", dest="use_mp", action="store_true"
     )
     argparser.add_argument(
         "--start", help="start findex", type=int, default=0, dest="start"
