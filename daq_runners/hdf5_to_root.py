@@ -186,7 +186,9 @@ if __name__ == "__main__":
     argparser.add_argument("--directory", help="file direcotry", dest="directory")
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
-    argparser.add_argument("--format", help="format", default=0, dest="format")
+    argparser.add_argument(
+        "--format", help="format", type=int, default=0, dest="format"
+    )
     argparser.add_argument(
         "--use-mp", help="use MP", dest="use_mp", action="store_true"
     )
