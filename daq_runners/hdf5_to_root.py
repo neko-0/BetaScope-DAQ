@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import logging
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_complete
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -129,25 +130,41 @@ def scope_h5_to_root(
 
 
 def run_scope_h5_to_root(
-    directory, prefix, channels, start_findex=0, nfile=-1, merge=False, format=0
+    directory,
+    prefix,
+    channels,
+    start_findex=0,
+    nfile=-1,
+    merge=False,
+    format=0,
+    use_mp=False,
 ):
     if nfile < 0:
         nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
+
+    common_args = (directory, prefix, channels)
     if merge:
+        scope_h5_to_root(*common_args, start_findex, nfile, format=format)
+        return
+
+    if use_mp:
+        ROOT.EnableThreadSafety()
+        with ProcessPoolExecutor(5) as pool:
+            futures = []
+            for i in range(nfile):
+                common_args = (directory, prefix, channels, start_findex + i)
+                kwargs_pack = {"nfile": 1, "suffix": i, "format": format}
+                futures.append(
+                    pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
+                )
+            for future in as_complete(futures):
+                _ = future.result()
+        return
+
+    for i in range(nfile):
         scope_h5_to_root(
-            directory, prefix, channels, start_findex, nfile, format=format
+            *common_args, start_findex + i, nfile=1, suffix=i, format=format
         )
-    else:
-        for i in range(nfile):
-            scope_h5_to_root(
-                directory,
-                prefix,
-                channels,
-                start_findex + i,
-                nfile=1,
-                suffix=i,
-                format=format,
-            )
 
 
 # ==============================================================================
@@ -160,6 +177,9 @@ if __name__ == "__main__":
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
     argparser.add_argument("--format", help="format", default=0, dest="format")
+    argparser.add_argument(
+        "--use_mp", help="use MP", dest="use_mp", action="store_true"
+    )
     argparser.add_argument(
         "--start", help="start findex", type=int, default=0, dest="start"
     )
@@ -177,6 +197,7 @@ if __name__ == "__main__":
             argv.start,
             merge=argv.merge,
             format=argv.format,
+            use_mp=argv.use_mp,
         )
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
