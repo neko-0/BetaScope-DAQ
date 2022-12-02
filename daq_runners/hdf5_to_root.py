@@ -89,7 +89,7 @@ class ScopeH5:
 def scope_h5_to_root(
     directory, prefix, channels, start_findex=0, nfile=-1, suffix=0, format=0
 ):
-    tfile = ROOT.TFile(f"{prefix}_{suffix}.root", "RECREATE", "", 5)
+    tfile = ROOT.TFile(f"ntuples/{prefix}_{suffix}.root", "RECREATE", "", 5)
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
