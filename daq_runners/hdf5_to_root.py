@@ -6,6 +6,7 @@ import argparse
 import logging
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import json
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -87,9 +88,16 @@ class ScopeH5:
 
 
 def scope_h5_to_root(
-    directory, prefix, channels, start_findex=0, nfile=-1, suffix=0, format=0
+    directory,
+    prefix,
+    channels,
+    start_findex=0,
+    nfile=-1,
+    suffix=0,
+    format=0,
+    output=".",
 ):
-    tfile = ROOT.TFile(f"ntuples/{prefix}_{suffix}.root", "RECREATE", "", 5)
+    tfile = ROOT.TFile(f"{output}/{prefix}_{suffix}.root", "RECREATE", "", 5)
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
@@ -156,6 +164,7 @@ def run_scope_h5_to_root(
     merge=False,
     format=0,
     use_mp=False,
+    output=".",
 ):
     if nfile < 0:
         with ScopeH5(directory, prefix, channels, 1, format) as scope_data:
@@ -164,7 +173,9 @@ def run_scope_h5_to_root(
 
     common_args = (directory, prefix, channels)
     if merge:
-        scope_h5_to_root(*common_args, start_findex, nfile, format=format)
+        scope_h5_to_root(
+            *common_args, start_findex, nfile, format=format, output=output
+        )
         return
 
     if use_mp:
@@ -173,7 +184,12 @@ def run_scope_h5_to_root(
             futures = []
             for i in range(nfile):
                 common_args = (directory, prefix, channels, start_findex + i)
-                kwargs_pack = {"nfile": 1, "suffix": i, "format": format}
+                kwargs_pack = {
+                    "nfile": 1,
+                    "suffix": i,
+                    "format": format,
+                    "output": output,
+                }
                 futures.append(
                     pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
                 )
@@ -183,7 +199,12 @@ def run_scope_h5_to_root(
 
     for i in range(nfile):
         scope_h5_to_root(
-            *common_args, start_findex + i, nfile=1, suffix=i, format=format
+            *common_args,
+            start_findex + i,
+            nfile=1,
+            suffix=i,
+            format=format,
+            output=output,
         )
 
 
@@ -192,7 +213,7 @@ def run_scope_h5_to_root(
 if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--mode", help="parsing mode", dest="mode")
+    argparser.add_argument("--mode", help="parsing mode", dest="mode", default=None)
     argparser.add_argument("--directory", help="file direcotry", dest="directory")
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
@@ -208,6 +229,10 @@ if __name__ == "__main__":
     argparser.add_argument(
         "--merge", help="merging all files", dest="merge", action="store_true"
     )
+    argparser.add_argument(
+        "--output", help="output directory", dest="output", default="."
+    )
+    argparser.add_argument("--joblist", help="job list", dest="joblist")
 
     argv = argparser.parse_args()
     if argv.mode == "scope":
@@ -220,7 +245,13 @@ if __name__ == "__main__":
             merge=argv.merge,
             format=argv.format,
             use_mp=argv.use_mp,
+            output=argv.output,
         )
+    if argv.mode == "scope-batch":
+        with open(argv.joblist) as f:
+            jobs = json.load(f)
+        for job in jobs:
+            run_scope_h5_to_root(**job)
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
         print(files)
