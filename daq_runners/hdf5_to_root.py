@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import logging
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_complete
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -157,7 +157,7 @@ def run_scope_h5_to_root(
                 futures.append(
                     pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
                 )
-            for future in as_complete(futures):
+            for future in as_completed(futures):
                 _ = future.result()
         return
 
