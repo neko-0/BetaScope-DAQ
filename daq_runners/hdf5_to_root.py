@@ -128,6 +128,7 @@ def scope_h5_to_root(
                     np.copyto(
                         t_traces[ch],
                         np.arange(XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]),
+                        "no",
                     )
                 except ValueError:
                     logger.warning("trace size is different?")
@@ -137,7 +138,9 @@ def scope_h5_to_root(
                     ch_path = f"Waveforms/Channel {ch}"
                     seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
                     np.copyto(
-                        v_traces[ch], scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch]
+                        v_traces[ch],
+                        scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch],
+                        "no",
                     )
                 ttree.Fill()
     tfile.Write()
