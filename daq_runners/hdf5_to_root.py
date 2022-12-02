@@ -25,7 +25,6 @@ def default_hdf5_to_root(fname):
 
     with h5py.File(fname, "r") as wavfile:
         nevents = len(wavfile.keys())
-        avg_counter = 0
         for i in range(nevents):
             if i % 100 == 0:
                 print(i)
@@ -48,22 +47,20 @@ def default_hdf5_to_root(fname):
 
 # ==============================================================================
 class ScopeH5:
-    def __init__(self, directory, prefix, channels, findex):
+    def __init__(self, directory, prefix, channels, findex, format=0):
         self.directory = directory
         self.prefix = prefix
         self.channels = channels
         self.findex = findex
         self._opened_f = {}
+        self.format = format
 
     def __getitem__(self, key):
         return self._opened_f[key]
 
     def __enter__(self):
         self._opened_f = {
-            ch: h5py.File(
-                f"{self.directory}/{self.prefix}_ch{ch}{self.findex:05d}.h5", "r"
-            )
-            for ch in self.channels
+            ch: h5py.File(self._compose_fname(ch), "r") for ch in self.channels
         }
         return self._opened_f
 
@@ -71,19 +68,30 @@ class ScopeH5:
         for f in self._opened_f.values():
             f.close()
 
+    def _compose_fname(self, ch):
+        if self.format == 0:
+            return f"{self.directory}/{self.prefix}_ch{ch}{self.findex:05d}.h5"
+        elif self.format == 1:
+            return f"{self.directory}/{self.prefix}{self.findex:05d}_ch{ch}.h5"
+        elif self.format == 2:
+            return f"{self.directory}/{self.prefix}{self.findex:05d}.h5"
 
-def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
-    tfile = ROOT.TFile(f"{prefix}.root", "RECREATE")
+
+def scope_h5_to_root(
+    directory, prefix, channels, start_findex=0, nfile=-1, suffix=0, format=0
+):
+    tfile = ROOT.TFile(f"{prefix}_{suffix}.root", "RECREATE")
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
     t_traces = {}
-    with ScopeH5(directory, prefix, channels, start_findex) as scope_data:
+    with ScopeH5(directory, prefix, channels, start_findex, format) as scope_data:
         ch = channels[0]
         ch_lookup = f"Waveforms/Channel {ch}"
-        num_wave = scope_data[ch]["Waveforms"].attrs["NumWaveforms"]
+        # num_wave = scope_data[ch]["Waveforms"].attrs["NumWaveforms"]
         num_pts = scope_data[ch][ch_lookup].attrs["NumPoints"]
         num_segment = scope_data[ch][ch_lookup].attrs["NumSegments"]
+        logger.info(f"Number of waveform points = {num_pts}")
         for ch in channels:
             v_traces[ch] = np.zeros(num_pts, dtype=np.double)
             t_traces[ch] = np.zeros(num_pts, dtype=np.double)
@@ -92,7 +100,7 @@ def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
 
     for i in tqdm(range(start_findex, nfile + start_findex), unit="files"):
         try:
-            scope_data = ScopeH5(directory, prefix, channels, i)
+            scope_data = ScopeH5(directory, prefix, channels, i, format)
         except FileNotFoundError:
             logger.warning(f"cannot retrieve all channel data for findex {i}")
             continue
@@ -121,15 +129,25 @@ def scope_h5_to_root(directory, prefix, channels, start_findex=0, nfile=-1):
 
 
 def run_scope_h5_to_root(
-    directory, prefix, channels, start_findex=0, nfile=-1, merge=False
+    directory, prefix, channels, start_findex=0, nfile=-1, merge=False, format=0
 ):
     if nfile < 0:
         nfile = len(glob.glob(f"{directory}/{prefix}_ch{channels[0]}*.h5"))
     if merge:
-        scope_h5_to_root(directory, prefix, channels, start_findex, nfile)
+        scope_h5_to_root(
+            directory, prefix, channels, start_findex, nfile, format=format
+        )
     else:
         for i in range(nfile):
-            scope_h5_to_root(directory, prefix, channels, start_findex + i, 1)
+            scope_h5_to_root(
+                directory,
+                prefix,
+                channels,
+                start_findex + i,
+                nfile=1,
+                suffix=i,
+                format=format,
+            )
 
 
 # ==============================================================================
@@ -141,6 +159,7 @@ if __name__ == "__main__":
     argparser.add_argument("--directory", help="file direcotry", dest="directory")
     argparser.add_argument("--prefix", help="file prefix", dest="prefix")
     argparser.add_argument("--channels", help="channels", dest="channels")
+    argparser.add_argument("--format", help="format", default=0, dest="format")
     argparser.add_argument(
         "--start", help="start findex", type=int, default=0, dest="start"
     )
@@ -152,10 +171,15 @@ if __name__ == "__main__":
     if argv.mode == "scope":
         ch = [int(i) for i in argv.channels.split(",")]
         run_scope_h5_to_root(
-            argv.directory, argv.prefix, ch, argv.start, merge=argv.merge
+            argv.directory,
+            argv.prefix,
+            ch,
+            argv.start,
+            merge=argv.merge,
+            format=argv.format,
         )
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
         print(files)
         for fname in files:
-            hdf5_to_root(fname)
+            default_hdf5_to_root(fname)
