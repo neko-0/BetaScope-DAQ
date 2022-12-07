@@ -139,6 +139,7 @@ def scope_h5_to_root(
                     np.copyto(t_traces[ch], tmp_t, "no")
                 except ValueError:
                     logger.warning(f"trace size is different? got {len(tmp_t)}")
+                    t_traces[ch][:] = tmp_t[: len(t_traces[ch])]
                     continue
             for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
                 for ch in channels:
