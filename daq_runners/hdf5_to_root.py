@@ -135,11 +135,13 @@ def scope_h5_to_root(
                 try:
                     np.copyto(
                         t_traces[ch],
-                        np.arange(XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch]),
+                        np.arange(
+                            XOrg[ch], XOrg[ch] + num_pts * XInc[ch] + XInc[ch], XInc[ch]
+                        ),
                         "no",
                     )
                 except ValueError:
-                    logger.warning("trace size is different?")
+                    logger.warning(f"trace size is different?")
                     continue
             for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
                 for ch in channels:
