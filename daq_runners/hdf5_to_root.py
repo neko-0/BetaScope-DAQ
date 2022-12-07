@@ -136,7 +136,7 @@ def scope_h5_to_root(
                     tmp_t = np.arange(
                         XOrg[ch], XOrg[ch] + num_pts * XInc[ch] + XInc[ch], XInc[ch]
                     )
-                    np.copyto(t_traces[ch], tmp_trace, "no")
+                    np.copyto(t_traces[ch], tmp_t, "no")
                 except ValueError:
                     logger.warning(f"trace size is different? got {len(tmp_t)}")
                     continue
