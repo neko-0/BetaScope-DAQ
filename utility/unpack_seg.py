@@ -3,20 +3,20 @@
 use for unpacking the segmented output file from keysight scope
 """
 
+import numpy as np
 import multiprocessing as mp
 import os
 from array import array
-
+from tqdm import tqdm
 import ROOT
 
-import logging
+# import logging
 
-logging.basicConfig()
-log = logging.getLogger(__name__)
+# logging.basicConfig()
+# logger = logging.getLogger(__name__)
 
 
 def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
-
     ifile = ROOT.TFile.Open(ifile_name)
     itree = ifile.Get("wfm")
     ifile_name = ifile_name.replace("//", "/")
@@ -34,8 +34,8 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
     ievent = array("i", [0])
     cycle = array("i", [0])
     for ch in ch_list:
-        channels_v[ch] = ROOT.std.vector("double")()
-        channels_t[ch] = ROOT.std.vector("double")()
+        channels_v[ch] = ROOT.std.vector("double")(num_pts)
+        channels_t[ch] = ROOT.std.vector("double")(num_pts)
         otree.Branch(f"w{ch}", channels_v[ch])
         otree.Branch(f"t{ch}", channels_t[ch])
     otree.Branch("temperature", temperature, "temperature/D")
@@ -47,7 +47,7 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
     otree.Branch("ievent", ievent, "ievent/I")
     otree.Branch("cycle", cycle, "cycle/I")
 
-    for ientry, entry in enumerate(itree):
+    for entry in tqdm(itree):
         try:
             temperature[0] = entry.temperature
             pi_humidity[0] = entry.humidity
@@ -62,22 +62,17 @@ def unpack_seg(ifile_name, ch_list, num_pts, seg_count):
         i_current[0] = entry.i_current
         ievent[0] = entry.ievent
         cycle[0] = entry.cycle
-        if ientry % 100 == 0:
-            log.info(f"{ifile_name}:{ientry}")
         for seg in range(seg_count):
-            xorigin = None
-            dt = None
-            for pt in range(num_pts):
-                for ch in ch_list:
-                    if xorigin == None:
-                        xorigin = getattr(entry, f"t{ch}")[0]
-                    if dt == None:
-                        dt = getattr(entry, f"t{ch}")[1] - getattr(entry, f"t{ch}")[0]
-                    channels_v[ch].push_back(
-                        getattr(entry, f"w{ch}")[pt + seg * num_pts]
-                    )
-                    channels_t[ch].push_back(xorigin)
-                xorigin += dt
+            for ch in ch_list:
+                t_trace = getattr(entry, f"t{ch}")
+                v_trace = getattr(entry, f"w{ch}")
+                xorigin = xorigin = t_trace[0]
+                dt = t_trace[1] - t_trace[0]
+                # construct new time trace
+                new_t_trace = np.arange(xorigin, num_pts) * dt + xorigin
+                # filling channel branches
+                channels_v[ch].swap(v_trace[seg * num_pts : (seg + 1) * num_pts])
+                channels_t[ch].swap(ROOT.std.vector("double")(new_t_trace))
             otree.Fill()
             for key in channels_v.keys():
                 channels_v[key].clear()
@@ -106,15 +101,8 @@ if __name__ == "__main__":
 
     pool = mp.Pool()
     for file in files:
-        pool.apply_async(
-            unpack_seg,
-            args=(
-                file,
-                chList,
-                user_args.n,
-                user_args.s,
-            ),
-        )
+        pool.apply_async(unpack_seg, args=(file, chList, user_args.n, user_args.s))
+        # unpack_seg(file, chList, user_args.n, user_args.s)
     pool.close()
     pool.join()
     # unpack_seg(user_args.f, chList, user_args.n, user_args.s)
