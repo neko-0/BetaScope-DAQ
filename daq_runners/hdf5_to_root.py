@@ -96,12 +96,14 @@ def scope_h5_to_root(
     suffix=0,
     format=0,
     output=".",
+    const_branches=None,
 ):
     tfile = ROOT.TFile(f"{output}/{prefix}_{suffix}.root", "RECREATE", "", 5)
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
     t_traces = {}
+    const_b = {}
     with ScopeH5(directory, prefix, channels, start_findex, format) as scope_data:
         ch = channels[0]
         ch_lookup = f"Waveforms/Channel {ch}"
@@ -109,11 +111,16 @@ def scope_h5_to_root(
         num_pts = scope_data[ch][ch_lookup].attrs["NumPoints"]
         num_segment = scope_data[ch][ch_lookup].attrs["NumSegments"]
         logger.info(f"Number of waveform points = {num_pts}")
+        logger.info(f"Number of segements = {num_segment}")
         for ch in channels:
             v_traces[ch] = np.empty(num_pts, dtype=np.double)
             t_traces[ch] = np.empty(num_pts, dtype=np.double)
             ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{num_pts}]/D")
             ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{num_pts}]/D")
+        if const_branches:
+            for name, bvalues in const_branches.items():
+                const_b[name] = np.array(bvalues[2], dtype=bvalues[0])
+                ttree.Branch(name, const_b[name], f"{name}/{bvalues[1]}")
 
     for i in tqdm(range(start_findex, nfile + start_findex), unit="files"):
         try:
@@ -133,24 +140,36 @@ def scope_h5_to_root(
                 XOrg[ch] = scope_data[ch][ch_path].attrs["XOrg"]
                 XInc[ch] = scope_data[ch][ch_path].attrs["XInc"]
                 try:
-                    tmp_t = np.arange(
-                        XOrg[ch], XOrg[ch] + num_pts * XInc[ch] + XInc[ch], XInc[ch]
-                    )
+                    tmp_t = np.arange(XOrg[ch], XOrg[ch] + num_pts * XInc[ch], XInc[ch])
                     np.copyto(t_traces[ch], tmp_t, "no")
                 except ValueError:
-                    logger.warning(f"trace size is different? got {len(tmp_t)}")
+                    logger.warning(
+                        f"trace size is different? got {len(tmp_t)}, expect {num_pts}"
+                    )
                     t_traces[ch][:] = tmp_t[: len(t_traces[ch])]
                     continue
-            for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
+            # if segment mode is enable
+            if num_segment > 0:
+                for seg in tqdm(range(1, num_segment), leave=False, unit="segment"):
+                    for ch in channels:
+                        ch_path = f"Waveforms/Channel {ch}"
+                        seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
+                        np.copyto(
+                            v_traces[ch],
+                            scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch],
+                            "no",
+                        )
+                    ttree.Fill()
+            else:
                 for ch in channels:
                     ch_path = f"Waveforms/Channel {ch}"
-                    seg_path = f"{ch_path}/Channel {ch} Seg{seg}Data"
+                    seg_path = f"{ch_path}/Channel {ch}Data"
                     np.copyto(
                         v_traces[ch],
                         scope_data[ch][seg_path][:] * YInc[ch] + YOrg[ch],
                         "no",
                     )
-                ttree.Fill()
+                    ttree.Fill()
     tfile.Write()
     tfile.Close()
 
@@ -165,6 +184,7 @@ def run_scope_h5_to_root(
     format=0,
     use_mp=False,
     output=".",
+    const_branches=None,
 ):
     if nfile < 0:
         with ScopeH5(directory, prefix, channels, start_findex, format) as scope_data:
@@ -174,7 +194,12 @@ def run_scope_h5_to_root(
     common_args = (directory, prefix, channels)
     if merge:
         scope_h5_to_root(
-            *common_args, start_findex, nfile, format=format, output=output
+            *common_args,
+            start_findex,
+            nfile,
+            format=format,
+            output=output,
+            const_branches=const_branches,
         )
         return
 
@@ -189,6 +214,7 @@ def run_scope_h5_to_root(
                     "suffix": i,
                     "format": format,
                     "output": output,
+                    "const_branches": const_branches,
                 }
                 futures.append(
                     pool.submit(scope_h5_to_root, *common_args, **kwargs_pack)
@@ -205,6 +231,7 @@ def run_scope_h5_to_root(
             suffix=i,
             format=format,
             output=output,
+            const_branches=const_branches,
         )
 
 
@@ -275,6 +302,9 @@ if __name__ == "__main__":
         dest="jobname",
         help="parsing the jobname listed in the joblist JSON file.",
     )
+    argparser.add_argument(
+        "--const", dest="const_branches", type=json.loads, default=None
+    )
 
     argv = argparser.parse_args()
     if argv.mode == "scope":
@@ -288,6 +318,7 @@ if __name__ == "__main__":
             format=argv.format,
             use_mp=argv.use_mp,
             output=argv.output,
+            const_branches=argv.const_branches,
         )
     if argv.mode == "scope-batch":
         with open(argv.joblist) as f:
