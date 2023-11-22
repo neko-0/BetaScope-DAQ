@@ -214,77 +214,66 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
         "--mode",
-        help="parsing mode",
         dest="mode",
         default=None,
-        description="parsing mode. the default mode is used for the simple DAQ runner. Mode 'scope' abnd 'scope-batch' are used for scope H5 format.",
+        help="parsing mode. the default mode is used for the simple DAQ runner. Mode 'scope' abnd 'scope-batch' are used for scope H5 format.",
     )
     argparser.add_argument(
         "--directory",
-        help="file direcotry",
         dest="directory",
-        description="directory to the H5 files.",
+        help="directory to the H5 files.",
     )
     argparser.add_argument(
         "--prefix",
-        help="file prefix",
         dest="prefix",
-        description="file prefix, e.g. prefix00001.h5",
+        help="file prefix, e.g. prefix00001.h5",
     )
     argparser.add_argument(
         "--channels",
-        help="channels",
         dest="channels",
-        description="channels for parsing. use common to separate.",
+        help="channels for parsing. use common to separate.",
     )
     argparser.add_argument(
         "--format",
-        help="format",
         type=int,
         default=0,
         dest="format",
-        description="format of the wildcard lookup.",
+        help="format of the wildcard lookup.",
     )
     argparser.add_argument(
         "--use-mp",
-        help="use MP",
         dest="use_mp",
         action="store_true",
-        description="enbaling multiprocessing.",
+        help="enbaling multiprocessing.",
     )
     argparser.add_argument(
         "--start",
-        help="start findex",
         type=int,
         default=0,
         dest="start",
-        description="starting index of the H5 files, e.g. prefix00001.h5",
+        help="starting index of the H5 files, e.g. prefix00001.h5",
     )
     argparser.add_argument(
         "--merge",
-        help="merging all files",
         dest="merge",
         action="store_true",
-        description="Converted all H5 files into single ROOT file.",
+        help="Converted all H5 files into single ROOT file.",
     )
     argparser.add_argument(
         "--output",
-        help="output directory",
         dest="output",
         default=".",
-        description="output directory for the ROOT files.",
+        help="output directory for the ROOT files.",
     )
     argparser.add_argument(
         "--joblist",
-        help="job list",
         dest="joblist",
-        description="JSON file for batch parsing. The JSON format: keys as jobname, values are the arguments used for the parser.",
+        help="JSON file for batch parsing. The JSON format: keys as jobname, values are the arguments used for the parser.",
     )
     argparser.add_argument(
         "--jobname",
-        help="job name",
         dest="jobname",
-        description="parsing the jobname listed in the joblist JSON file.",
+        help="parsing the jobname listed in the joblist JSON file.",
     )
 
     argv = argparser.parse_args()
