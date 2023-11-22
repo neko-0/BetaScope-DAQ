@@ -129,3 +129,6 @@ user_data/
 output
 py3
 .DS_Store
+
+# Default temporary output directories
+daq_runners/test_daq
