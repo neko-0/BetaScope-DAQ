@@ -132,3 +132,4 @@ py3
 
 # Default temporary output directories
 daq_runners/test_daq
+daq_runners/user_data

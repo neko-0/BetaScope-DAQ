@@ -14,6 +14,7 @@
     "threshold" : -0.05
   },
   "stage" : {
+    "api" : "/usr/lib/xx.so",
     "manual" : true,
     "x_axis" : 1, 
     "y_axis" : 0,

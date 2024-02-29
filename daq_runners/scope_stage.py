@@ -51,6 +51,8 @@ def scope_stage(config_file):
     if not config["stage"]["manual"]:
         axes = {"x" : config["stage"]["x_axis"], "y" : config["stage"]["y_axis"]}
         stage = betascopedaq.Stage(axes)
+        stage.setup_api(config["stage"]["api"])
+        stage.connect()
         if not stage.connected:
             raise RuntimeError("Cannot connect to stage!")
         pos = stage.getPosition()
@@ -130,12 +132,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Example of DAQ with Keysight Scope")
     parser.add_argument("--config", dest="config", type=str, help="configuration file.")
-    parser.add_argument(
-        "--display-wav",
-        dest="display_wav",
-        action="store_true",
-        help="text waveform display.",
-    )
 
     args = parser.parse_args()
 
