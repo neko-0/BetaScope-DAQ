@@ -3,15 +3,13 @@ Keithley TSP? command wrapper
 """
 
 import logging
-
-logging.basicConfig()
-log = logging.getLogger(__name__)
-
 import socket
 import time
 import numpy as np
+from .core import PowerSupply
 
-from ..core import PowerSupply
+logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 class SockConnection(object):

@@ -1,12 +1,12 @@
 import pyvisa as visa
 import time
 import logging, coloredlogs
-from .general import general
+from ..general import general
 from .core import PowerSupply
 
 logging.basicConfig()
-log = logging.getLogger(__name__)
-coloredlogs.install(level="INFO", logger=log)
+logger = logging.getLogger(__name__)
+coloredlogs.install(level="INFO", logger=logger)
 
 PORTXX = "02"
 
@@ -44,27 +44,31 @@ class SimpleCaenPowerSupply(PowerSupply):
         global PORTXX
         rm = visa.ResourceManager("@py")
         resources = rm.list_resources()
-        log.info(resources)
+        logger.info(resources)
         for res in resources:
             if "ttyACM0" in res:
                 self.inst = rm.open_resource(res)
                 self.inst.clear()
+                break
+        else:
+            logger.warning("cannot find power supply.")
+            return
         # self.inst.write_termination("\r\n")
         # self.inst.read_termination("\r\n")
 
         idn = self.inst.query("$BD:" + PORTXX + ",CMD:MON,PAR:BDNAME")
         remote_status = self.check_remote_status()
         if "DT1471ET" in idn:
-            log.info("Connected to CAEN Power Supply.")
+            logger.info("Connected to CAEN Power Supply.")
         else:
-            log.critical("Power supply is not available.")
+            logger.critical("Power supply is not available.")
             return
 
-        log.info("Checking remote status...")
+        logger.info("Checking remote status...")
         if "LOCAL" in remote_status:
-            log.warning("Remote access is closed.")
+            logger.warning("Remote access is closed.")
         else:
-            log.info("Remote access is opened.")
+            logger.info("Remote access is opened.")
 
     def simple_query(self, comm, channel=-1, delay=0.5):
         time.sleep(delay)
@@ -105,14 +109,14 @@ class SimpleCaenPowerSupply(PowerSupply):
         # print(VMON)
         while float(VMON) > 0.1:
             VMON = self.simple_query("VMON", channel)
-            log.info("Voltage : {}".format(VMON))
+            logger.info("Voltage : {}".format(VMON))
 
     def set_voltage(self, channel, value, currentMax=1.2):
-        log.info("Set channel {} voltage to {}".format(channel, value))
+        logger.info("Set channel {} voltage to {}".format(channel, value))
         # self.simple_set(channel, "VSET", value)
         VMON = self.simple_query("VMON", channel)
         self.simple_set(channel, "VSET", value)
-        log.info("VMON: {}".format(VMON))
+        logger.info("VMON: {}".format(VMON))
         # print(self.simple_query("VMON", channel))
         timeout_counter = 1000
         counter = 0
@@ -133,21 +137,21 @@ class SimpleCaenPowerSupply(PowerSupply):
                     pass
                 else:
                     current_limit = currentMax
-                log.critical(
+                logger.critical(
                     "Tripped! increasing current limit to {}".format(current_limit)
                 )
                 # self.set_channel_status_bit(channel, "00001")
                 time.sleep(30)
                 self.channel_switch(channel, "ON")
                 self.simple_set(channel, "ISET", current_limit)
-                log.info("Restart rampnig")
+                logger.info("Restart rampnig")
             if counter == timeout_counter:
                 return 0
-                log.critical(
+                logger.critical(
                     "Timeout: Maximum counter reached {}".format(timeout_counter)
                 )
                 break
-        log.info(
+        logger.info(
             "\nFinished, the voltage now is {}\n".format(
                 self.simple_query("VMON", channel)
             )
@@ -171,13 +175,13 @@ class SimpleCaenPowerSupply(PowerSupply):
                     pass
                 else:
                     current_limit = currentMax
-                log.critical(
+                logger.critical(
                     "Tripped! increasing current limit to {}".format(current_limit)
                 )
                 self.set_channel_status_bit(channel, 1)
 
             if counter == timeout_counter:
-                log.critical(
+                logger.critical(
                     "Timeout: Maximum counter reached {}".format(timeout_counter)
                 )
                 break
@@ -185,7 +189,7 @@ class SimpleCaenPowerSupply(PowerSupply):
     def voltage_monitor(self, channel, delay):
         local_VMON = 999
         local_VMON = self.simple_query("VMON", channel, delay)
-        log.info("Monitoring Voltage: {}".format(local_VMON))
+        logger.info("Monitoring Voltage: {}".format(local_VMON))
         return local_VMON
 
     def voltage_monitor_value(self, channel, delay):
@@ -194,7 +198,7 @@ class SimpleCaenPowerSupply(PowerSupply):
 
     def current_monitor(self, channel, delay):
         local_IMON = self.simple_query("IMON", channel, delay)
-        log.info("Monitoring Current: {}".format(local_IMON))
+        logger.info("Monitoring Current: {}".format(local_IMON))
         return local_IMON
 
     def current_monitor_value(self, channel, delay):
@@ -217,13 +221,13 @@ class SimpleCaenPowerSupply(PowerSupply):
         self.simple_set(channel, "STAT", value)
 
     def reset_channel(self, channel):
-        log.info("Resetting channel {}. Power off".format(channel))
+        logger.info("Resetting channel {}. Power off".format(channel))
         VMON = self.simple_query("VMON", channel)
         self.channel_switch(channel, "OFF")
         while abs(float(VMON) - 0.0) > 1.0:
             VMON = self.simple_query("VMON", channel, 2)
-            log.info("Monitoring Voltage: {}".format(VMON))
-        log.info("Finished. You need to re-power the channel")
+            logger.info("Monitoring Voltage: {}".format(VMON))
+        logger.info("Finished. You need to re-power the channel")
 
     def Get_Voltage_Current_Pair(self, channel):
         """
@@ -251,8 +255,8 @@ class SimpleCaenPowerSupply(PowerSupply):
             dI = iValue - self.I_value
             if dI >= self.delta_I:
                 # print(self.I_value)
-                log.warning("Current Warning: Rapid Increase")
-                log.info("Shutdown Channel: {}".format(channel))
+                logger.warning("Current Warning: Rapid Increase")
+                logger.info("Shutdown Channel: {}".format(channel))
                 self.close(channel)
                 return 1
         return 0
@@ -266,10 +270,10 @@ class SimpleCaenPowerSupply(PowerSupply):
         """
         status_bits = format(int(status), "#016b")
         if bit > 15:
-            log.critical("bit > max bit(15)", "y")
+            logger.critical("bit > max bit(15)", "y")
         else:
             if status_bits[15 - bit] == "1":
-                log.warning("WARNING: %s" % self.__status_bit_meaning[bit][1], "y")
+                logger.warning("WARNING: %s" % self.__status_bit_meaning[bit][1], "y")
                 return 1
             else:
                 return 0
@@ -284,7 +288,7 @@ class SimpleCaenPowerSupply(PowerSupply):
             self.set_voltage_Q(ch, voltage)
 
     def close(self, channel):
-        log.info("object calls close(). {} channels are turning off".format(channel))
+        logger.info("object calls close(). {} channels are turning off".format(channel))
         if channel == "ALL":
             self.channel_switch(0, "OFF")
             self.channel_switch(1, "OFF")
@@ -344,7 +348,7 @@ class SimpleCaenPowerSupply(PowerSupply):
 
 
 if __name__ == "__main__":
-    log.info("testing")
+    logger.info("testing")
     ps = SimpleCaenPowerSupply()
 
 """

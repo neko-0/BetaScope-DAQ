@@ -1,12 +1,10 @@
 import logging, coloredlogs
+from .caen import SimpleCaenPowerSupply
+from .keithley_core import Keithley
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
-
-
-from .caen_ps.CAEN_PS import SimpleCaenPowerSupply
-from .keithley.core import Keithley
 
 
 class PowerSupplyProducer:

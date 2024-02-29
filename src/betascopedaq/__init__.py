@@ -7,10 +7,13 @@ from .file_io.ROOTClass import ROOTFileOutput
 
 from .stage.stage import Stage
 
+from . import power_supply as PS
+
 __all__ = [
     "ScopeProducer",
     "KeysightScope",
     "F4T_Controller",
     "ROOTFileOutput",
     "Stage",
+    "PS",
 ]
