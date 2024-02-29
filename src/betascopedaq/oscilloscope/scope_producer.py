@@ -1,6 +1,7 @@
 """
 class for producing scope and scope methods.
 """
+
 import logging, coloredlogs
 
 logging.basicConfig()

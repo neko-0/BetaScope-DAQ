@@ -223,11 +223,11 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         self.write("*CLS")
         self.write(":STOP")
         if self.nsegments == 1:
-           self.write(":ACQ:MODE RTIMe") # Real time mode
+            self.write(":ACQ:MODE RTIMe")  # Real time mode
         else:
-           self.write(":ACQ:MODE SEGM")  # Segmentation mode
-           self.write(f"ACQ:SEGM:COUN {self.nsegments}")
-           self.write(":WAV:SEGM:ALL ON")
+            self.write(":ACQ:MODE SEGM")  # Segmentation mode
+            self.write(f"ACQ:SEGM:COUN {self.nsegments}")
+            self.write(":WAV:SEGM:ALL ON")
         self.write(":ACQ:BAND MAX")
         self.write(":ACQ:INT OFF")
         self.write(":ACQ:AVER OFF")
@@ -265,13 +265,13 @@ class KeysightScope_TCPIP(KeysightScopeInterfaceBase):
         output["xincrement"] = self.query(":WAV:XINC?;*OPC?").split(";")[0]
         output["waveform"] = self.query(":WAV:DATA?").rstrip(",")
         if self.nsegments == 1:
-           output["ttag"] = None
-           output["relx"] = None
-           output["absx"] = None
+            output["ttag"] = None
+            output["relx"] = None
+            output["absx"] = None
         else:
-           output["ttag"] = self.query(":WAV:SEGM:XLIS? TTAG").rstrip(",")
-           output["relx"] = self.query(":WAV:SEGM:XLIS? RELX").rstrip(",")
-           output["absx"] = self.query(":WAV:SEGM:XLIS? ABSX").rstrip(",")
+            output["ttag"] = self.query(":WAV:SEGM:XLIS? TTAG").rstrip(",")
+            output["relx"] = self.query(":WAV:SEGM:XLIS? RELX").rstrip(",")
+            output["absx"] = self.query(":WAV:SEGM:XLIS? ABSX").rstrip(",")
         self.query("*OPC?")
         return output
 

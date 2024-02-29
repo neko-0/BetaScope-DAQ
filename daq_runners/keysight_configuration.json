@@ -1,14 +1,28 @@
 {
   "output_path" : "./test_daq/",
-  "nevents" : 1000,
-  "nsegments" : 100,
+  "output_name" : "test",
+  "nevents" : 100,
+  "nsegments" : 10,
   "time_ranges" : 100e-9,
   "sampling_rate" : 40e9,
+  "bandwidth" : 2.5e9,
   "ip_address" : "192.168.1.12",
-  "enable_channels" : [1,2,3],
+  "enable_channels" : [2],
   "trigger_setting" : {
-      "channel" : 3,
-      "slope" : "POS",
-      "threshold" : 0.05
-    }
+    "channel" : 2,
+    "slope" : "NEG",
+    "threshold" : -0.05
+  },
+  "stage" : {
+    "manual" : true,
+    "x_axis" : 1, 
+    "y_axis" : 0,
+    "speed" : 1500,
+    "x_start" : 0,
+    "y_start" : 0,
+    "x_end" : 1000,
+    "y_end" : 1000,
+    "x_step" : 10,
+    "y_step" : 10
+  }
 }
