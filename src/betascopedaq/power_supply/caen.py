@@ -1,17 +1,14 @@
+import pyvisa as visa
+import time
 import logging, coloredlogs
+from .general import general
+from .core import PowerSupply
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
 
-import pyvisa as visa
-import time
-
-import general.general as general
-
-from ..core import PowerSupply
-
-xx = "02"
+PORTXX = "02"
 
 
 class SimpleCaenPowerSupply(PowerSupply):
@@ -35,8 +32,16 @@ class SimpleCaenPowerSupply(PowerSupply):
             14: ["N.C", "Reserved bit"],
             15: ["N.C", "Reserved bit"],
         }
+        self.inst = None
+        self.complicance = 1.0  # uA
+        self.delta_I = 0.5  # uA
+        self.I_value = 0.0  # uA
+        self.initial_I = 1
+        self.timeout = 100000
+        self.progress = general.progress(2)
 
-        global xx
+    def connect(self):
+        global PORTXX
         rm = visa.ResourceManager("@py")
         resources = rm.list_resources()
         log.info(resources)
@@ -47,35 +52,28 @@ class SimpleCaenPowerSupply(PowerSupply):
         # self.inst.write_termination("\r\n")
         # self.inst.read_termination("\r\n")
 
-        idn = self.inst.query("$BD:" + xx + ",CMD:MON,PAR:BDNAME")
+        idn = self.inst.query("$BD:" + PORTXX + ",CMD:MON,PAR:BDNAME")
         remote_status = self.check_remote_status()
         if "DT1471ET" in idn:
             log.info("Connected to CAEN Power Supply.")
         else:
             log.critical("Power supply is not available.")
+            return
+
         log.info("Checking remote status...")
         if "LOCAL" in remote_status:
-            log.critical("Remote access is closed, Press ENTER to contitue.")
-            input()
+            log.warning("Remote access is closed.")
         else:
             log.info("Remote access is opened.")
-
-        self.complicance = 1.0  # uA
-        self.delta_I = 0.5  # uA
-        self.I_value = 0.0  # uA
-        self.initial_I = 1
-        self.timeout = 100000
-
-        self.progress = general.progress(2)
 
     def simple_query(self, comm, channel=-1, delay=0.5):
         time.sleep(delay)
         command = ""
         output = ""
         if channel == -1:
-            command = "$BD:" + xx + ",CMD:MON,PAR:{}".format(comm)
+            command = "$BD:" + PORTXX + ",CMD:MON,PAR:{}".format(comm)
         else:
-            command = "$BD:" + xx + ",CMD:MON,CH:{},PAR:{}".format(channel, comm)
+            command = "$BD:" + PORTXX + ",CMD:MON,CH:{},PAR:{}".format(channel, comm)
         output = self.inst.query(command)
         # print(output)
         output = output.split(",")
@@ -89,7 +87,7 @@ class SimpleCaenPowerSupply(PowerSupply):
 
     def simple_set(self, channel, par, value):
         command = (
-            "$BD:" + xx + ",CMD:SET,CH:{},PAR:{},VAL:{}".format(channel, par, value)
+            "$BD:" + PORTXX + ",CMD:SET,CH:{},PAR:{},VAL:{}".format(channel, par, value)
         )
         self.inst.query(command)
 
@@ -97,7 +95,9 @@ class SimpleCaenPowerSupply(PowerSupply):
         return self.simple_query("BDCTR")
 
     def channel_switch(self, channel, status):
-        self.inst.query("$BD:" + xx + ",CMD:SET,CH:{},PAR:{}".format(channel, status))
+        self.inst.query(
+            "$BD:" + PORTXX + ",CMD:SET,CH:{},PAR:{}".format(channel, status)
+        )
 
     def simple_reset(self, channel):
         self.channel_switch(channel, "OFF")

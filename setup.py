@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 # import os
 
-setuptools.setup(
+setup(
     name="BetaScope-DAQ",  # Replace with your own username
     version="0.1.0",
     author="UFSDLab",

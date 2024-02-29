@@ -1,6 +1,7 @@
 """
 Keithley TSP? command wrapper
 """
+
 import logging
 
 logging.basicConfig()

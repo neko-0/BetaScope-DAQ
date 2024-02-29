@@ -49,7 +49,7 @@ class Position(Structure):
 
 
 SO_FILENAME = "libximc.so.7"
-API = CDLL("/usr/lib/" + SO_FILENAME)
+API = None
 
 # Absolute maximum speed in steps/min
 MAX_STEP_SPEED = 2000
@@ -62,6 +62,11 @@ STOP_POLL_INTERVAL = 100
 # =======================> AT 1/256 MICROSTEPPING MODE <=======================
 # NOTE: THIS VALUE WILL BE DIFFERENT AT OTHER MODES!
 CONVERSION_COEFFICIENT = 2.496  # um/step
+
+
+def init_api(sofile=None):
+    global API
+    API = CDLL(sofile or f"/usr/lib/{SO_FILENAME}")
 
 
 # Each Axis class that gets instantiated controls one axis, this will be used
@@ -141,16 +146,10 @@ class Stage:
 
     # Connect to each axis
     def __init__(self, axes, units=None):
-        self.devices = API.enumerate_devices(0x01, b"addr=")
-        self.connected = True
-
+        self.devices = None
+        self.connected = False
+        self.input_axes = axes
         self.axes = {}
-        for k, axis in axes:
-            self.axes[k] = Axis(self, axis)
-            self.connected &= self.axes[k].connected
-
-        if not self.connected:
-            return
 
         # If no custom units are specified then use our own
         if units == None:
@@ -163,6 +162,21 @@ class Stage:
 
         # Finally, set the microstepping mode from the custom units
         self.setMicrostep(self.units.MicrostepMode)
+
+    # Wrapper of the global API init call
+    def setup_api(self, sofile=None):
+        init_api(sofile)
+
+    def connect(self):
+        try:
+            self.device = API.enumerate_devices(0x01, b"addr=")
+            self.connected = True
+        except:
+            raise RuntimeError("cannot connect to stage.")
+
+        for k, axis in self.input_axes:
+            self.axes[k] = Axis(self, axis)
+            self.connected &= self.axes[k].connected
 
     # Get the number of axes connected to the PC
     def getDeviceCount(self):
@@ -230,5 +244,3 @@ def __init__():
 if __name__ == "__main__":
     print("I'm a module, please don't run me alone.")
     exit()
-else:
-    print("[Stage ok] ", end="")

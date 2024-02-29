@@ -1,13 +1,14 @@
 """
 class for agelient e3646a power supply
 """
+
 import logging, coloredlogs
+import pyvisa as visa
+
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
-
-import pyvisa as visa
 
 
 class E3646A_PS(object):
