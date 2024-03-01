@@ -329,7 +329,7 @@ if __name__ == "__main__":
         with open(argv.joblist) as f:
             jobs = json.load(f)
         for jobname in argv.jobname.split(","):
-            for job in jobs[argv.jobname]:
+            for job in jobs[jobname]:
                 try:
                     run_scope_h5_to_root(**job)
                 except Exception as _err:
