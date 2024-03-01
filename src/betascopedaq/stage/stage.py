@@ -199,7 +199,7 @@ class Stage:
     # If _wait_ is set to True the function will wait for all motors to stop
     # before returning.
     def to(self, coords, wait=True):
-        for k, coord in coords:
+        for k, coord in coords.items():
             self.axes[k].to(coord, wait)
 
     def to2d(self, x, y, wait=True):
