@@ -5,7 +5,11 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
 
 import os
-import ROOT
+
+try:
+    import ROOT
+except ImportError:
+    print("Cannot import ROOT")
 from array import array
 
 
