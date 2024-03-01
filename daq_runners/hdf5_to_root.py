@@ -6,6 +6,7 @@ import argparse
 import logging
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 import json
 
 logging.basicConfig()
@@ -100,7 +101,9 @@ def scope_h5_to_root(
     output=".",
     const_branches=None,
 ):
-    tfile = ROOT.TFile(f"{output}/{prefix}_{suffix}.root", "RECREATE", "", 5)
+    output_f = Path(f"{output}/{prefix}_{suffix}.root")
+    output_f.parent.mkdir(parents=True, exist_ok=True)
+    tfile = ROOT.TFile(str(output_f.resolve()), "RECREATE", "", 5)
     ttree = ROOT.TTree("wfm", "from Keysight H5")
     # initializing branches
     v_traces = {}
