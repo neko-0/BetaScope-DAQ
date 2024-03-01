@@ -328,7 +328,7 @@ if __name__ == "__main__":
     if argv.mode == "scope-batch":
         with open(argv.joblist) as f:
             jobs = json.load(f)
-        for jobname in args.jobname.split(","):
+        for jobname in argv.jobname.split(","):
             for job in jobs[argv.jobname]:
                 try:
                     run_scope_h5_to_root(**job)
