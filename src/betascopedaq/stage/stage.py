@@ -174,7 +174,7 @@ class Stage:
         except:
             raise RuntimeError("cannot connect to stage.")
 
-        for k, axis in self.input_axes:
+        for k, axis in self.input_axes.items():
             self.axes[k] = Axis(self, axis)
             self.connected &= self.axes[k].connected
 
