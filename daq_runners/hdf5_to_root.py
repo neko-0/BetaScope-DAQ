@@ -328,12 +328,13 @@ if __name__ == "__main__":
     if argv.mode == "scope-batch":
         with open(argv.joblist) as f:
             jobs = json.load(f)
-        for job in jobs[argv.jobname]:
-            try:
-                run_scope_h5_to_root(**job)
-            except Exception as _err:
-                logger.warning(f"cannot run {job} due to {_err}")
-                continue
+        for jobname in args.jobname.split(","):
+            for job in jobs[argv.jobname]:
+                try:
+                    run_scope_h5_to_root(**job)
+                except Exception as _err:
+                    logger.warning(f"cannot run {job} due to {_err}")
+                    continue
     else:
         files = glob.glob(f"{argv.directory}/*hdf5")
         print(files)
