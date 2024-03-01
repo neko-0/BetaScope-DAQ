@@ -77,13 +77,15 @@ class ScopeH5:
             return f"{self.directory}/{self.prefix}{self.findex:05d}_ch{ch}.h5"
         elif self.format == 2:
             return f"{self.directory}/{self.prefix}{self.findex:05d}.h5"
+        elif self.format == 3:
+            return f"{self.directory}/{self.prefix}_ch{ch}.h5"
 
     def compose_wildcard(self, ch):
         if self.format == 0:
             return f"{self.directory}/{self.prefix}_ch{ch}*.h5"
         elif self.format == 1:
             return f"{self.directory}/{self.prefix}*_ch{ch}.h5"
-        elif self.format == 2:
+        elif self.format in {2, 3}:
             return f"{self.directory}/{self.prefix}*.h5"
 
 
