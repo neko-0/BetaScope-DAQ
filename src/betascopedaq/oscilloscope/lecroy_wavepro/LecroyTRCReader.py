@@ -136,13 +136,13 @@ def trcReader(
             offset_ss = offset_ss[0]
         OFF_SET = offset_ss.find(b"WAVEDESC")
         # CH_prefix_index = offset_ss.find("C{}:WF ALL,".format(CH))
-        CH_prefix_index = offset_ss.find("C%d:WF ALL," % int(CH))
-        CH_prefix_index2 = offset_ss.find("C{}:WF".format(CH))
+        CH_prefix_index = offset_ss.find(f"C{CH}:WF ALL,".encode())
+        CH_prefix_index2 = offset_ss.find(f"C{CH}:WF".encode())
         Print(CH_prefix_index)
         Print(CH_prefix_index2)
         if CH_prefix_index > 0:
             OFF_SET += CH_prefix_index
-        Print("OFF_SET {}".format(OFF_SET))
+        Print(f"OFF_SET {OFF_SET}")
 
     endianess = ""
     endi_bytes = binary_waveform[

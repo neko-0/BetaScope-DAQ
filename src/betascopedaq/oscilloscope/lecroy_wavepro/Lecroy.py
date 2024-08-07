@@ -5,10 +5,15 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=log)
 
 import pyvisa as visa
+import numpy as np
 import time
 import functools
+import logging
 from .LecroyTRCReader import trcReader
 from ..base import Scope
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class LecroyScope(Scope):
@@ -23,47 +28,8 @@ class LecroyScope(Scope):
         initial a scope object with ethernet connection.
         """
         self._model = "LECROY"
-        if not ip_address:
-            print("No ip address")
-            return
-        print(ip_address)
-        self.rm = visa.ResourceManager("@py")
-        print("Using ethernet connection: "),
-        self.inst = self.rm.open_resource("TCPIP0::" + ip_address + "::inst0::INSTR")
         self.ip_addr = ip_address
-        self.inst.clear()
-        # self.inst.read_termination = '\r\n'
-        self.inst.write_termination = "\r\n"
-        self.inst.write("*IDN?;")
-        idn = self.inst.read()
-        if "LECROY" in idn:
-            print("\nConnected to Lecroy Wavepro 725zi Oscilloscope.\n")
-            time.sleep(0.01)
-        else:
-            print("\nUnable to connect to Lecroy Wavepro 725zi Oscilloscope.\n")
-            board = 0
-            while True:
-                print("\n retrying board {}...".format(board))
-                self.inst = visa.ResourceManager("@py").open_resource(
-                    "TCPIP" + str(board) + "::" + ip_address + "::inst0::INSTR"
-                )
-                self.inst.write("*IDN?;")
-                idn = self.inst.read()
-                if "LECROY" in idn:
-                    print("\nConnected to Lecroy Wavepro 725zi Oscilloscope.\n")
-                    time.sleep(0.01)
-                    break
-                else:
-                    print(
-                        "\nStill unable to connect to Lecroy Wavepro 725zi Oscilloscope.\n"
-                    )
-                    board += 1
-                    # return
-
-        self.inst.timeout = 100000
-
-        self.inst.write("Comm_ForMaT DEF9,WORD,BIN")
-        # self.inst.write("SEQ ON, 5, 40e+12")
+        self.board = 0
 
     # ***************************************************************************
     # Private
@@ -74,49 +40,106 @@ class LecroyScope(Scope):
 
     # ===========================================================================
     def _Set_Screen_Display(self, channel, switch):
-        self.inst.write("C{}:TRA {}".format(channel, switch))
+        self.inst.write(f"C{channel}:TRA {switch}")
 
     def reopen_resource(self):
         self.inst.close()
-        self.inst = self.rm.open_resource("TCPIP0::" + self.ip_addr + "::inst0::INSTR")
+        self.inst = self.rm.open_resource(f"TCPIP0::{self.ip_addr}::inst0::INSTR")
         self.inst.clear()
         self.set_read_byte(2048)
         self.inst.write("Comm_ForMaT DEF9,WORD,BIN")
         self.inst.write("*IDN?;")
         idn = self.inst.read()
-        print("reponed: {}".format(idn))
+        logger.info(f"Re-opened: {idn}")
 
     # ===========================================================================
     def _Set_Internal_Display(self, channel, switch):
-        self.inst.write("C{}:DISP {}".format(channel, switch))
+        self.inst.write(f"C{channel}:DISP {switch}")
 
     # ===========================================================================
     def _Set_Trigger_Mode(self, channel, mode):
         mode_list = ["AUTO", "NORM", "SINGLE", "STOP"]
         if mode in mode_list:
-            self.inst.write("TRig_MoDe {};WAIT;".format(mode))
-            self.inst.write("TRSE EDGE,SR,C{},HT,OFF;WAIT;".format(channel))
+            self.inst.write(f"TRig_MoDe {mode};WAIT;")
+            self.inst.write(f"TRSE EDGE,SR,C{channel},HT,OFF;WAIT;")
         else:
-            self.inst.write("TRig_MoDe {};WAIT;".format(mode_list[0]))
+            self.inst.write(f"TRig_MoDe {mode_list[0]};WAIT;")
 
     # ===========================================================================
     def _Set_Trigger_Slope(self, channel, slope):
         slope_list = ["POS", "NEG", "WINDOW"]
         if slope in slope_list:
-            self.inst.write("C{}:TRig_SLope {};".format(channel, slope))
+            self.inst.write(f"C{channel}:TRig_SLope {slope};")
         else:
             # take default [0] if slope is not one of the mode in trig_slope
-            self.inst.write("C{}:TRig_SLope {};".format(channel, slope_list[0]))
+            self.inst.write(f"C{channel}:TRig_SLope {slope_list[0]};")
 
     # ===========================================================================
     def _Set_Trigger_Level(self, channel, threshold):
-        self.inst.write("C{}:TRig_LeVel {}V;".format(channel, threshold))
+        self.inst.write(f"C{channel}:TRig_LeVel {threshold}V;")
 
     # ***************************************************************************
     # Public
 
-    def Close(self):
+    # ***************************************************************************
+    def initialize(self, *args, **kwargs):
+        """
+        This method initiate the scope setup.
+        """
+        logger.info("Using ethernet connection: "),
+        self.rm = visa.ResourceManager("@py")
+        self.inst = self.rm.open_resource(
+            f"TCPIP{self.board}::{self.ip_addr}::inst0::INSTR"
+        )
+        self.inst.clear()
+        # self.inst.read_termination = '\r\n'
+        self.inst.write_termination = "\r\n"
+        self.inst.write("*IDN?;")
+        idn = self.inst.read()
+        while True or self.board > 100:
+            if "LECROY" in idn:
+                logger.info("connection established.")
+                time.sleep(0.01)
+                break
+            logger.warning("retry connection.")
+            self.board += 1
+            logger.info(f"\n retrying board {self.board}.")
+            self.inst = visa.ResourceManager("@py").open_resource(
+                f"TCPIP{self.board}::{self.ip_addr}::inst0::INSTR"
+            )
+            self.inst.write("*IDN?;")
+            idn = self.inst.read()
+
+        self.inst.timeout = 100000
+        self.inst.write("Comm_ForMaT DEF9,WORD,BIN")
+        # self.inst.write("SEQ ON, 5, 40e+12")
+
+    # ***************************************************************************
+    def connect(self, *args, **kwargs):
+        """
+        This method initiate the connection to the scope.
+        """
+        pass
+
+    # ***************************************************************************
+    def close(self):
         self.inst.close()
+
+    # ***************************************************************************
+    def query(self, *args, **kwargs):
+        return self.inst.query(*args, **kwargs)
+
+    # ***************************************************************************
+    def read(self):
+        return self.inst.read()
+
+    # ***************************************************************************
+    def write(self, *args, **kwargs):
+        return self.inst.write(*args, **kwargs)
+
+    # ***************************************************************************
+    def reset(self, *args, **kwargs):
+        self.reopen_resource()
 
     # ===========================================================================
     def Set_Channel_Display(self, channel, switch):
@@ -124,25 +147,27 @@ class LecroyScope(Scope):
         self._Set_Screen_Display(channel, switch)
 
     # ===========================================================================
-    def Arm_trigger(self, channel_number, slope, threshold, sweep_mode="NORM"):
+    def arm_trigger(self, channel_number, slope, threshold, sweep_mode="NORM"):
         """"""
         self._Set_Trigger_Mode(channel_number, sweep_mode)
         self._Set_Trigger_Slope(channel_number, slope)
         self._Set_Trigger_Level(channel_number, threshold)
 
     # ===========================================================================
+    def set_trigger(self, channel, threshold, polarity, mode):
+        self.arm_trigger(channel, polarity, threshold, mode)
+
+    # ===========================================================================
     def create_dir(self, dirc):  # dont use it, it is garbage.
         self.inst.write(
-            "DIR DISK,HDD,ACTION,CREATE,C:\\Users\\LeCroyUser\\Desktop\\{}".format(dirc)
+            f"DIR DISK,HDD,ACTION,CREATE,C:\\Users\\LeCroyUser\\Desktop\\{dirc}"
         )
         self.inst.write(
-            "DIR DISK,HDD,ACTION,SWITCH,C:\\Users\\LeCroyUser\\Desktop\\{}".format(dirc)
+            f"DIR DISK,HDD,ACTION,SWITCH,C:\\Users\\LeCroyUser\\Desktop\\{dirc}"
         )
 
     def local_store_setup(self, on_off="OFF"):
-        self.inst.write(
-            "STST ALL_DISPLAYED,HDD,AUTO,on_off,FORMAT,BINARY".format(on_off)
-        )
+        self.inst.write(f"STST ALL_DISPLAYED,HDD,AUTO,{on_off},FORMAT,BINARY")
 
     def save_waveform_local(self):
         self.inst.write("STO ALL_DISPLAYED,FILE")
@@ -150,38 +175,38 @@ class LecroyScope(Scope):
     # ===========================================================================
     def _Get_Wavefrom_ASCII(self, channel):
         looper = 0
-        voltage = self.inst.query("C{}:INSPECT? SIMPLE;".format(channel))
+        voltage = self.inst.query(f"C{channel}:INSPECT? SIMPLE;")
         voltage = voltage.split()
         voltage = voltage[2 : len(voltage) - 2]
         while voltage == []:
             looper += 1
-            print("Empty V, retrying {}".format(looper))
-            voltage = self.inst.query("C{}:INSPECT? SIMPLE;".format(channel))
+            logger.warning(f"Empty V, retrying {looper}")
+            voltage = self.inst.query(f"C{channel}:INSPECT? SIMPLE;")
             # if voltage == []:
             # print "Empty Event"
             # return [[0],[0]]
             voltage = voltage.split()
             voltage = voltage[2 : len(voltage) - 2]
 
-        t_offset = self.inst.query("C{}:INSPECT? HORIZ_OFFSET;".format(channel))
+        t_offset = self.inst.query(f"C{channel}:INSPECT? HORIZ_OFFSET;")
         t_offset = t_offset.split()
         while t_offset == "" or t_offset == []:
             looper += 1
-            print("Empty offset, retrying {}".format(looper))
+            logger.warning(f"Empty offset, retrying {looper}")
             # print t_offset
-            t_offset = self.inst.query("C{}:INSPECT? HORIZ_OFFSET;".format(channel))
+            t_offset = self.inst.query(f"C{channel}:INSPECT? HORIZ_OFFSET;")
             t_offset = t_offset.split()
             # if t_offset == "":
             # print "Empty Event"
             # return [[0],[0]]
         t_offset = float(t_offset[3])
-        t_bin = self.inst.query("C{}:INSPECT? HORIZ_INTERVAL;".format(channel))
+        t_bin = self.inst.query(f"C{channel}:INSPECT? HORIZ_INTERVAL;")
         t_bin = t_bin.split()
         while t_bin == "" or t_bin == []:
             looper += 1
-            print("Empty bin, retrying {}".format(looper))
+            logger.warning(f"Empty bin, retrying {looper}")
             # print t_offset
-            t_bin = self.inst.query("C{}:INSPECT? HORIZ_INTERVAL;".format(channel))
+            t_bin = self.inst.query(f"C{channel}:INSPECT? HORIZ_INTERVAL;")
             t_bin = t_bin.split()
             # if t_bin == "":
             #    print "Empty Event"
@@ -206,9 +231,9 @@ class LecroyScope(Scope):
         toffset_query_string = "WAIT;"
         tbin_query_string = "WAIT;"
         for channel in channel_list:
-            waveform_query_string += "C{}:INSPECT? SIMPLE;".format(channel)
-            toffset_query_string += "C{}:INSPECT? HORIZ_OFFSET;".format(channel)
-            tbin_query_string += "C{}:INSPECT? HORIZ_INTERVAL;".format(channel)
+            waveform_query_string += f"C{channel}:INSPECT? SIMPLE;"
+            toffset_query_string += f"C{channel}:INSPECT? HORIZ_OFFSET;"
+            tbin_query_string += f"C{channel}:INSPECT? HORIZ_INTERVAL;"
 
         voltage_list = []
         # t1 = time.time()
@@ -218,7 +243,7 @@ class LecroyScope(Scope):
         voltage = voltage.split()
         while voltage == []:
             looper += 1
-            print("Empty V, retrying {}".format(looper))
+            logger.warning(f"Empty V, retrying {looper}")
             voltage = self.inst.query(waveform_query_string)
             voltage = voltage.split()
 
@@ -239,7 +264,7 @@ class LecroyScope(Scope):
         t_offset = t_offset.split()
         while t_offset == "" or t_offset == []:
             looper += 1
-            print("Empty offset, retrying {}".format(looper))
+            logger.warning(f"Empty offset, retrying {looper}")
             t_offset = self.inst.query(toffset_query_string)
             t_offset = t_offset.split()
 
@@ -252,7 +277,7 @@ class LecroyScope(Scope):
         t_bin = t_bin.split()
         while t_bin == "" or t_bin == []:
             looper += 1
-            print("Empty bin, retrying {}".format(looper))
+            logger.warning(f"Empty bin, retrying {looper}")
             t_bin = self.inst.query(tbin_query_string)
             t_bin = t_bin.split()
 
@@ -286,7 +311,7 @@ class LecroyScope(Scope):
 
         if isinstance(channel, list):
             for ch in channel:
-                self.inst.write("C{}:WF?".format(ch))
+                self.inst.write(f"C{ch}:WF?")
                 binary_stream = self.inst.read_raw()
                 if raw:
                     raw_data.append(binary_stream)
@@ -325,17 +350,17 @@ class LecroyScope(Scope):
             )
 
     # ===========================================================================
-    def Get_Waveform(self, channel, mode="binary", seq_mode=False):
+    def get_waveform(self, channel, mode="binary", seq_mode=False):
         if "binary" in mode and "raw" in mode:
             try:
                 return self._Get_Waveform_Binary(channel, raw=True)
             except ValueError as error:
-                print(error)
+                logger.warning(error)
         elif "binary" in mode:
             try:
-                return self._Get_Waveform_Binary(channel, False, seq_mode)
+                return np.array(self._Get_Waveform_Binary(channel, False, seq_mode))
             except ValueError as error:
-                print(error)
+                logger.warning(error)
         elif "ascii" in mode:
             if isinstance(channel, list):
                 return self._Get_Wavefrom_ASCII_All(channel)
@@ -346,7 +371,7 @@ class LecroyScope(Scope):
 
     # ===========================================================================
 
-    def Wait_For_Next_Trigger(self, timeout=0.0, trigger_scan=None):
+    def wait_trigger(self, timeout=0.0, trigger_scan=None):
         # self.inst.write("ARM;")
         # self.inst.write("ARM;")#" WAIT;")
         # self.inst.write("ARM; WAIT;")
@@ -355,11 +380,10 @@ class LecroyScope(Scope):
         # self.inst.write("ARM;WAIT;") #this one??
         # self.inst.query("ARM;WAIT;")
         if trigger_scan is None:
-            return self.inst.query(
-                "ARM;WAIT;*OPC?"
-            )  # .format(str(timeout))) #or this oone??
+            return self.inst.query("ARM;WAIT;*OPC?")
+            # .format(str(timeout))) #or this oone??
         else:
-            return self.inst.query("TRMD SINGLE;WAIT {};FRTR;*OPC?".format(timeout))
+            return self.inst.query(f"TRMD SINGLE;WAIT {timeout};FRTR;*OPC?")
         # self.inst.write("ARM;*OPC?")
 
     # ===========================================================================
@@ -375,17 +399,12 @@ class LecroyScope(Scope):
 
     # ===========================================================================
     # ===========================================================================
-    def SetTrigger(self, channel, threshold, polarity, mode):
-        self.Arm_trigger(channel, polarity, threshold, mode)
-
-    # ===========================================================================
-    # ===========================================================================
     def WaitForTrigger(self, timeout=0.0, trigger_scan=None):
         return self.Wait_For_Next_Trigger(timeout, trigger_scan)
 
     # ===========================================================================
     # ===========================================================================
-    def Enable_Channel(self, ch, option):
+    def enable_channel(self, ch, option):
         log.info("Setting channel {} {}".format(ch, option))
         self.Set_Channel_Display(ch, option)
 
@@ -393,9 +412,8 @@ class LecroyScope(Scope):
     # ===========================================================================
     def InitSetup(self, *argv):
         log.info("Initialzing setup")
-        self.set_read_byte(
-            1048
-        )  # don't konw why read_raw() needs input. It wasn't like this before 2019/9/10
+        # don't konw why read_raw() needs input. It wasn't like this before 2019/9/10
+        self.set_read_byte(1048)
         self.Arm_trigger(*argv)
 
     # ===========================================================================
