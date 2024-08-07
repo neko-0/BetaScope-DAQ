@@ -1,0 +1,11 @@
+{
+    "ip_address" : "192.168.1.12",
+    "active_channels" : [1,2,3],
+    "trigger_setting" : {
+        "channel" : 3,
+        "threshold" : 1.5,
+        "polarity" : "POS",
+        "mode" : "NORM"
+    },
+    "nevents" : 100
+}
