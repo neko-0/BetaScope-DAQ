@@ -1,6 +1,7 @@
 from .oscilloscope.scope_producer import ScopeProducer
 from .oscilloscope.keysight_infiniium_s.interface import KeysightScope
 from .oscilloscope.lecroy_wavepro.Lecroy import LecroyScope
+from .oscilloscope.lecroy_wavepro.LecroyTRCReader import trcReader
 
 from .tenney_chamber.f4t_controller import F4T_Controller
 
@@ -18,4 +19,5 @@ __all__ = [
     "ROOTFileOutput",
     "Stage",
     "PS",
+    "trcReader",
 ]
