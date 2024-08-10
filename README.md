@@ -27,3 +27,21 @@ You will need linux-gpib. After installing linux-gpib, load the kernel module wi
 sudo modprobe ni_usb_gpib
 sudo gpib_config -f /etc/gpib.conf
 ```
+
+### Converting Lecroy scope data to ROOT format
+
+#### On UFSD lab computer (xrayuser account)
+
+When you login and open the terminal, source the python environment
+
+```
+source pyDAQ/bin/activate
+```
+
+Then, use the `trc_to_root` script from the `daq_runners` directory, for example
+
+```
+python BetaScope-DAQ/daq_runners/trc_to_root.py --directory <src_path> --ofilename <output> --channels "1,2,3", --nevents 100
+```
+
+The output file would be in `<src_path>/<output>.root`
