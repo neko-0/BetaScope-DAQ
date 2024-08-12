@@ -9,7 +9,7 @@ from tqdm import tqdm
 def read_trc(filename, ch):
     with open(filename, "rb") as f:
         v_trace = np.array(betaDAQ.trcReader(f.read(), "WAV_DATA", ch))
-    t_trace = np.arange(0, len(v_trace))
+    t_trace = np.arange(0, len(v_trace), dtype=np.double)
 
     return t_trace, v_trace
 
@@ -32,8 +32,8 @@ def trc_to_root(input_directory, ofile, channels, nevents):
     v_traces = {}
     t_traces = {}
     for ch in channels:
-        v_traces[ch] = np.empty(npts, np.doule)
-        t_traces[ch] = np.empty(npts, np.doule)
+        v_traces[ch] = np.empty(npts, np.double)
+        t_traces[ch] = np.empty(npts, np.double)
         o_ttree.Branch(f"w{ch}", v_traces[ch], f"w{ch}[{npts}]/D")
         o_ttree.Branch(f"t{ch}", t_traces[ch], f"t{ch}[{npts}]/D")
 
@@ -65,4 +65,6 @@ if __name__ == "__main__":
 
     argv = argparser.parse_args()
 
-    trc_to_root(argv.directory, argv.ofilename, argv.channel.split(","), argv.nevents)
+    trc_to_root(
+        argv.directory, argv.ofilename, argv.channels.split(","), int(argv.nevents)
+    )
