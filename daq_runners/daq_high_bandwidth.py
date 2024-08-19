@@ -33,11 +33,11 @@ def daq_high_bandwidth(config):
     ofile = betaDAQ.ROOTFileOutput(output_name, config["active_channels"])
     ofile.create_branch("delay", "D")
 
-    for delay in delay_ranges:
+    for delay in tqdm(delay_ranges):
         if wav_gen:
             wav_gen.write(f":PULSe:DELay2 {delay}NS")
         ofile.additional_branch["delay"] = delay
-        for evt in tqdm(range(config["nevents"])):
+        for evt in tqdm(range(config["nevents"]), leave=False):
             try:
                 scope.wait_trigger()
             except:
