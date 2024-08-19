@@ -19,8 +19,8 @@ def daq_high_bandwidth(config):
 
     if config["delay_scan"]["enable"]:
         delay_start = config["delay_scan"]["start"]
-        delay_end = config["delay_scale"]["end"]
-        delay_step = config["delay_scale"]["step_size"]
+        delay_end = config["delay_scan"]["end"]
+        delay_step = config["delay_scan"]["step_size"]
         delay_ranges = np.arange(delay_start, delay_end, delay_step)
         wav_gen = Agilent81110A(board=10)
     else:
