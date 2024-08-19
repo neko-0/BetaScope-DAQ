@@ -1,8 +1,9 @@
 from tqdm import tqdm
 import numpy as np
 import json
-import betascopedaq as betaDAQ
+from betascopedaq.oscilloscope import LecroyScope
 from betascopedaq.generator import Agilent81110A
+from betascopedaq import ROOTFileOutput
 
 
 def daq_high_bandwidth(config):
@@ -11,7 +12,7 @@ def daq_high_bandwidth(config):
         config = json.load(f)
 
     # construct scope instance
-    scope = betaDAQ.LecroyScope(config["ip_address"])
+    scope = LecroyScope(config["ip_address"])
     scope.initialize()
 
     scope.set_trigger(**config["trigger_setting"])
@@ -30,7 +31,7 @@ def daq_high_bandwidth(config):
 
     output_name = f"{config['output']['directory']}/{config['output']['name']}"
 
-    ofile = betaDAQ.ROOTFileOutput(output_name, config["active_channels"])
+    ofile = ROOTFileOutput(output_name, config["active_channels"])
     ofile.create_branch("delay", "D")
 
     for delay in tqdm(delay_ranges):
