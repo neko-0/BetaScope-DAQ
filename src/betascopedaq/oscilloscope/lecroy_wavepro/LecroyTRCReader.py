@@ -1,5 +1,10 @@
 import struct
 import sys
+import logging
+from functools import lru_cache
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 OFF_SET = 21
 LECROY_WAVEFORM_TEMPLATE = {
@@ -68,19 +73,7 @@ LECROY_WAVEFORM_TEMPLATE = {
 }
 
 
-VERBOSE = False
-
-
-def Print(content, verbose=False):
-    if not verbose:
-        return 0
-    elif verbose == True:
-        print(content)
-    else:
-        print("Debug... "),
-        print(content)
-
-
+@lru_cache
 def LoadTRCFile(fileName):
     with open(fileName, mode="rb") as f:
         return f.read()
@@ -98,6 +91,7 @@ def Endianess(check_endianess, default="<"):
             sys.exit("Cannot find bit order!")
 
 
+@lru_cache
 def Decode_Bytes(data_bytes, format, TRCfile_mode=False):
     unpacked_data = ""
     try:
@@ -109,40 +103,40 @@ def Decode_Bytes(data_bytes, format, TRCfile_mode=False):
             unpacked_data = struct.unpack(format, str(data_bytes))
     if type(unpacked_data) == tuple:
         unpacked_data = unpacked_data[0]
+        if not isinstance(unpacked_data, str):
+            return unpacked_data
         try:
             if "\x00" in unpacked_data:
                 unpacked_data = unpacked_data.split("\x00")[0]
-                # raw_input("done")
-        except:
+        except Exception as _err:
+            logger.warning(f"Decoding error: {_err}")
             pass
     else:
         if "\x00" in unpacked_data:
             unpacked_data = unpacked_data.split("\x00")[0]
-            Print(unpacked_data)
-            # raw_input("done")
+            logger.info(unpacked_data)
     return unpacked_data
 
 
+@lru_cache
 def trcReader(
     binary_waveform, sub_data, CH=2, sequence=None, TRCfile_mode=False
 ):  # , bytes_fmt ):
-    # print(binary_waveform)
     OFF_SET = ""
     if OFF_SET == "":
         offset_bytes = binary_waveform[:50]
-        Print(offset_bytes)
+        logger.info(offset_bytes)
         offset_ss = struct.unpack("50s", offset_bytes)
         if type(offset_ss) == tuple:
             offset_ss = offset_ss[0]
         OFF_SET = offset_ss.find(b"WAVEDESC")
-        # CH_prefix_index = offset_ss.find("C{}:WF ALL,".format(CH))
         CH_prefix_index = offset_ss.find(f"C{CH}:WF ALL,".encode())
         CH_prefix_index2 = offset_ss.find(f"C{CH}:WF".encode())
-        Print(CH_prefix_index)
-        Print(CH_prefix_index2)
+        logger.info(CH_prefix_index)
+        logger.info(CH_prefix_index2)
         if CH_prefix_index > 0:
             OFF_SET += CH_prefix_index
-        Print(f"OFF_SET {OFF_SET}")
+        logger.info(f"OFF_SET {OFF_SET}")
 
     endianess = ""
     endi_bytes = binary_waveform[
@@ -150,12 +144,12 @@ def trcReader(
         + LECROY_WAVEFORM_TEMPLATE["COMM_ORDER"][1] : OFF_SET
         + LECROY_WAVEFORM_TEMPLATE["COMM_ORDER"][2]
     ]
-    Print(endi_bytes)
+    logger.info(endi_bytes)
     # fmt = endi+LECROY_WAVEFORM_TEMPLATE[sub_data][0]
     endi_ss = struct.unpack("H", endi_bytes)
     if type(endi_ss) == tuple:
         endianess = endi_ss[0]
-    Print(endianess)
+    logger.info(endianess)
     endianess = Endianess(endianess)
 
     if sub_data == "WAV_DATA":
@@ -169,7 +163,7 @@ def trcReader(
             ]
             wave_count = struct.unpack(endianess + "l", wave_count_bytes)
             wave_count = wave_count[0]
-            Print("voltage_bit:{}".format(wave_count))
+            logger.info(f"{wave_count=}")
 
             vertical_offset_bytes = binary_waveform[
                 OFF_SET
@@ -181,7 +175,7 @@ def trcReader(
                 vertical_offset_bytes,
             )
             vertical_offset = vertical_offset[0]
-            Print("vertical_offset:{}".format(vertical_offset))
+            logger.info(f"{vertical_offset=}")
             vertical_gain_bytes = binary_waveform[
                 OFF_SET
                 + LECROY_WAVEFORM_TEMPLATE["VERTICAL_GAIN"][1] : OFF_SET
@@ -192,7 +186,7 @@ def trcReader(
                 vertical_gain_bytes,
             )
             vertical_gain = float(vertical_gain[0])
-            Print("vertical_gain:{}".format(vertical_gain))
+            logger.info(f"{vertical_gain}")
             wave_data_stream = binary_waveform[
                 OFF_SET + LECROY_WAVEFORM_TEMPLATE["WAVE_SOURCE"][2] :
             ]
@@ -201,7 +195,7 @@ def trcReader(
                 voltage_bit = wave_data_stream[i * 2 : i * 2 + 2]
                 voltage_bit = struct.unpack(endianess + "h", voltage_bit)
                 voltage_bit = voltage_bit[0]
-                Print("voltage_bit:{}".format(voltage_bit))
+                logger.info(f"{voltage_bit=}")
                 wave_data.append((voltage_bit) * 1.0 * vertical_gain - vertical_offset)
             return wave_data
         else:
@@ -220,8 +214,8 @@ def trcReader(
             ]
             segment_count = struct.unpack(endianess + "H", segment_count_bytes)
             segment_count = segment_count[0]
-            Print("wave_cout:{}".format(wave_count))
-            Print("wave_cout:{}".format(int(wave_count / segment_count)))
+            logger.info(f"{wave_count=}")
+            logger.info(f"wave cout per seg:{int(wave_count / segment_count)}")
             wave_count = int(wave_count / segment_count)
 
             vertical_offset_bytes = binary_waveform[
@@ -234,7 +228,6 @@ def trcReader(
                 vertical_offset_bytes,
             )
             vertical_offset = vertical_offset[0]
-            # print("vertical_offset:{}".format(vertical_offset))
             vertical_gain_bytes = binary_waveform[
                 OFF_SET
                 + LECROY_WAVEFORM_TEMPLATE["VERTICAL_GAIN"][1] : OFF_SET
@@ -245,7 +238,7 @@ def trcReader(
                 vertical_gain_bytes,
             )
             vertical_gain = float(vertical_gain[0])
-            Print("vertical_gain:{}".format(vertical_gain))
+            logger.info(f"{vertical_gain=}")
             USER_TEXT_bytes = int(trcReader(binary_waveform, "USER_TEXT", CH))
             TRIGTIME_ARRAY_bytes = int(trcReader(binary_waveform, "TRIGTIME_ARRAY", CH))
             trigger_time_array = binary_waveform[
@@ -256,20 +249,17 @@ def trcReader(
                 + USER_TEXT_bytes
                 + TRIGTIME_ARRAY_bytes
             ]
-            Print(len(trigger_time_array))
-            Print(len(trigger_time_array) / struct.calcsize("d"))
-            # raw_input()
+            logger.info(len(trigger_time_array))
+            logger.info(len(trigger_time_array) / struct.calcsize("d"))
             for i in range(len(trigger_time_array) / struct.calcsize("d")):
                 d = struct.unpack(
                     endianess + "d", trigger_time_array[0 + i * 8 : 8 * i + 8]
                 )
                 if i % 2 == 0:
-                    Print(d)
-            # raw_input()
+                    logger.info(d)
 
             RIS_TIME_ARRAY_bytes = int(trcReader(binary_waveform, "RIS_TIME_ARRAY", CH))
-            Print(RIS_TIME_ARRAY_bytes)
-            # raw_input()
+            logger.info(RIS_TIME_ARRAY_bytes)
             # wave_low_bytes = OFF_SET+LECROY_WAVEFORM_TEMPLATE["WAVE_SOURCE"][2]+USER_TEXT_bytes+TRIGTIME_ARRAY_bytes
             wave_low_bytes = (
                 OFF_SET
@@ -289,12 +279,10 @@ def trcReader(
             else:
                 wave_data_type = "h"
                 wave_data_byte_size = 2
-            # raw_input(wave_data_byte_size)
-            Print("WAVE count {}".format(wave_count))
-            # raw_input()
-            Print("segment_count {}".format(segment_count))
-            Print("vertical_offset {}".format(vertical_offset))
-            Print("vertical_gain {}".format(vertical_gain))
+            logger.info(f"WAVE count {wave_count}")
+            logger.info(f"segment_count {segment_count}")
+            logger.info(f"vertical_offset {vertical_offset}")
+            logger.info(f"vertical_gain {vertical_gain}")
             for k in range(segment_count * 2):
                 if (k + 1) % 2 != 0:
                     for i in range(wave_count - 2):
@@ -304,43 +292,30 @@ def trcReader(
                             + wave_data_byte_size
                             + k * wave_count
                         ]
-                        # raw_input(voltage_bit)
                         # voltage_bit = wave_data_stream[i*wave_data_byte_size+k*wave_count:i*wave_data_byte_size+wave_data_byte_size+k*wave_count]
                         voltage_bit = struct.unpack(
                             endianess + wave_data_type, voltage_bit
                         )
                         voltage_bit = voltage_bit[0]
-                        # print(voltage_bit)
-                        # Print("voltage_bit:{}".format(voltage_bit))
-                        ##raw_input((voltage_bit)*1.0*vertical_gain- vertical_offset)
+                        # logger.info(f"{voltage_bit=}")
                         wave_data.append(
                             (voltage_bit) * 1.0 * vertical_gain - vertical_offset
                         )
-
-                # print("here good")
-                # print(wave_data)
             return wave_data
 
     if sub_data == "Trig_Time":
-        trigger_timestamp = []
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_SEC", CH, sequence, TRCfile_mode)
-        )
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_MIN", CH, sequence, TRCfile_mode)
-        )
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_HOU", CH, sequence, TRCfile_mode)
-        )
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_DAY", CH, sequence, TRCfile_mode)
-        )
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_MON", CH, sequence, TRCfile_mode)
-        )
-        trigger_timestamp.append(
-            trcReader(binary_waveform, "TRIGGER_TIME_YEA", CH, sequence, TRCfile_mode)
-        )
+        _timestamp = [
+            "TRIGGER_TIME_SEC",
+            "TRIGGER_TIME_MIN",
+            "TRIGGER_TIME_HOU",
+            "TRIGGER_TIME_DAY",
+            "TRIGGER_TIME_MON",
+            "TRIGGER_TIME_YEA",
+        ]
+        trigger_timestamp = [
+            trcReader(binary_waveform, x, CH, sequence, TRCfile_mode)
+            for x in _timestamp
+        ]
         return trigger_timestamp
 
     if sub_data == "Trigger_Tdiff" and sequence != None:
@@ -362,7 +337,7 @@ def trcReader(
         ]
         d_byteSize = struct.calcsize("d")
         numEvent = len(trigger_Tdiff_data) / d_byteSize
-        Print(numEvent)
+        logger.info(numEvent)
         trigger_Tdiff = []
         for i in range(numEvent):
             d = struct.unpack(
