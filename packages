@@ -1,0 +1,7 @@
+git
+vim
+libboost-all-dev 
+libyaml-cpp-dev 
+libeigen3-dev
+python3-pip
+python3.10-venv

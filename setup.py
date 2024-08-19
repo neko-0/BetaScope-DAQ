@@ -25,6 +25,7 @@ setup(
         "h5py",
         "tqdm",
         "pyserial-asyncio",
+        "gpib_ctypes",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
