@@ -23,9 +23,17 @@ def trc_to_root(input_directory, ofile, channels, nevents):
     o_ttree = ROOT.TTree("wfm", "Converted from Lecroy TRC files")
 
     # get npts from one of the file
-    t_trace, v_trace = read_trc(
-        f"{input_directory}/Z{channels[0]}--pulse--00000.trc", channels[0]
-    )
+    init_index = 0
+    while True:
+        t_trace, v_trace = read_trc(
+            f"{input_directory}/Z{channels[0]}--pulse--{init_index:05d}.trc",
+            channels[0],
+        )
+        break
+    else:
+        init_index += 1
+        if init_index > 10:
+            raise FileNotFoundError(f"Z{channels[0]}--pulse--*(0 to 10).trc")
     npts = len(t_trace)
 
     # setting up output branches
@@ -40,9 +48,12 @@ def trc_to_root(input_directory, ofile, channels, nevents):
     # start parsing
     for event in tqdm(range(nevents)):
         for ch in channels:
-            t_trace, v_trace = read_trc(
-                f"{input_directory}/Z{ch}--pulse--{event:05d}.trc", ch
-            )
+            try:
+                t_trace, v_trace = read_trc(
+                    f"{input_directory}/Z{ch}--pulse--{event:05d}.trc", ch
+                )
+            except FileNotFoundError:
+                continue
             np.copyto(v_traces[ch], v_trace, "no")
             np.copyto(t_traces[ch], t_trace, "no")
         o_ttree.Fill()
