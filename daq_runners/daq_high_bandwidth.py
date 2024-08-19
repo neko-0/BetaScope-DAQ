@@ -57,4 +57,5 @@ def daq_high_bandwidth(config):
     ofile.Close()
 
 
-daq_high_bandwidth("config_high_bandwidth.json")
+if __name__ == "__main__":
+    daq_high_bandwidth("config_high_bandwidth.json")
