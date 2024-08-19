@@ -1,43 +1,41 @@
 import logging, coloredlogs
 
 logging.basicConfig()
-log = logging.getLogger(__name__)
-coloredlogs.install(level="INFO", logger=log)
+logger = logging.getLogger(__name__)
+coloredlogs.install(level="INFO", logger=logger)
 
 import os
 
 try:
     import ROOT
 except ImportError:
-    print("Cannot import ROOT")
+    logger.critical("Cannot import ROOT")
 from array import array
 
 
 class ROOTFileOutput(object):
-    def __init__(self, fileName, branch_list, opt=None):
+    def __init__(self, fileName, branch_list, opt=None, compression_level=5):
         # check to see if file exist
         same_file_counter = 1
         self.file_name = fileName
         while True:
+            if not os.path.isfile(fileName):
+                break
+
+            logger.warning(
+                f"file already existed, incrementing file index to {same_file_counter}"
+            )
+            same_file_counter += 1
+            fileName = "".join(
+                [fileName.split(".root")[0], f".root.{same_file_counter}"]
+            )
             if os.path.isfile(fileName):
-                log.warning(
-                    "file already existed, incrementing file index to {counter}".format(
-                        counter=same_file_counter
-                    )
-                )
-                same_file_counter += 1
-                fileName = fileName.split(".root")[0] + ".root.{i}".format(
-                    i=same_file_counter
-                )
-                if os.path.isfile(fileName):
-                    continue
-                else:
-                    break
+                continue
             else:
                 break
 
         # start creating output file
-        self.tfile = ROOT.TFile(fileName, "RECREATE", "8")
+        self.tfile = ROOT.TFile(fileName, "RECREATE", compression_level)
         self.ttree = ROOT.TTree("wfm", "recorded waveform(remote mode)")
         self.w = []
         self.t = []
@@ -58,15 +56,14 @@ class ROOTFileOutput(object):
         for i in range(len(branch_list)):
             self.w.append(ROOT.std.vector("double")())
             self.t.append(ROOT.std.vector("double")())
-            self.ttree.Branch("w{}".format(branch_list[i]), self.w[i])
-            self.ttree.Branch("t{}".format(branch_list[i]), self.t[i])
+            self.ttree.Branch(f"w{branch_list[i]}", self.w[i])
+            self.ttree.Branch(f"t{branch_list[i]}", self.t[i])
 
     def Fill(self):
         self.ttree.Fill()
-        for b in self.w:
-            b.clear()
-        for b in self.t:
-            b.clear()
+        for b_w, b_t in zip(self.w, self.t):
+            b_w.clear()
+            b_t.clear()
 
     def create_branch(self, name, type):
         if type == "D":
@@ -74,16 +71,14 @@ class ROOTFileOutput(object):
         elif type == "I":
             self.additional_branch[str(name)] = array("i", [0])
         else:
-            log.critical("Invalid data type for {branch}".format(branch=name))
-            log.info("Using default (type Double)")
+            logger.critical(f"Invalid data type for {name}")
+            logger.warning("Using default (type Double)")
 
-        self.ttree.Branch(
-            str(name), self.additional_branch[name], "{}/{}".format(name, type)
-        )
-        log.info("additional branch ({}) is created".format(name))
+        self.ttree.Branch(str(name), self.additional_branch[name], f"{name}/{type}")
+        logger.info(f"additional branch ({name}) is created")
 
     def Close(self):
-        log.info("Writing file")
+        logger.info("Writing file")
         self.tfile.Write()
         self.tfile.Close()
-        log.info("file is finished")
+        logger.info("file is finished")
