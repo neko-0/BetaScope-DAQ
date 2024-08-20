@@ -4,7 +4,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 coloredlogs.install(level="INFO", logger=logger)
 
-import os
+from pathlib import Path
 
 try:
     import ROOT
@@ -17,25 +17,23 @@ class ROOTFileOutput(object):
     def __init__(self, fileName, branch_list, opt=None, compression_level="5"):
         # check to see if file exist
         same_file_counter = 1
-        self.file_name = fileName
+        self.file_name = Path(fileName)
         while True:
-            if not os.path.isfile(fileName):
+            if not self.file_name.is_file():
+                self.file_name.parent.mkdir(parents=True, exist_ok=True)
                 break
 
             logger.warning(
-                f"file already existed, incrementing file index to {same_file_counter}"
+                f"file already existed, change file index to {same_file_counter}"
             )
             same_file_counter += 1
             fileName = "".join(
                 [fileName.split(".root")[0], f".root.{same_file_counter}"]
             )
-            if os.path.isfile(fileName):
-                continue
-            else:
-                break
+            self.file_name = Path(fileName)
 
         # start creating output file
-        self.tfile = ROOT.TFile(fileName, "RECREATE", compression_level)
+        self.tfile = ROOT.TFile(self.file_name, "RECREATE", compression_level)
         self.ttree = ROOT.TTree("wfm", "recorded waveform(remote mode)")
         self.w = []
         self.t = []
