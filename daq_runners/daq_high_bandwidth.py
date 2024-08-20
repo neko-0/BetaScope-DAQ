@@ -1,6 +1,11 @@
 from tqdm import tqdm
 import numpy as np
 import json
+
+from gpib_ctypes.gpib import _load_lib
+
+_load_lib("/usr/local/lib/libgpib.so")
+
 from betascopedaq.oscilloscope import LecroyScope
 from betascopedaq.generator import Agilent81110A
 from betascopedaq import ROOTFileOutput
@@ -33,11 +38,12 @@ def daq_high_bandwidth(config):
 
     ofile = ROOTFileOutput(output_name, config["active_channels"])
     ofile.create_branch("delay", "D")
+    ofile.create_branch("t_interval", "D")
 
     for delay in tqdm(delay_ranges):
         if wav_gen:
             wav_gen.write(f":PULSe:DELay2 {delay}NS")
-        ofile.additional_branch["delay"] = delay
+        ofile.additional_branch["delay"][0] = delay
         for evt in tqdm(range(config["nevents"]), leave=False):
             try:
                 scope.wait_trigger()
@@ -45,14 +51,16 @@ def daq_high_bandwidth(config):
                 evt -= 1
                 continue
 
-            data = scope.get_waveform(config["active_channels"])
+            data = scope.get_waveform(config["active_channels"], ch_prefix="Z")
             t_data, w_data = data
             for ch, (t_d, w_d) in enumerate(zip(t_data, w_data)):
                 t_push_back = ofile.t[ch].push_back
                 w_push_back = ofile.w[ch].push_back
-                for _t, _w in zip(t_d, w_d):
-                    t_push_back(_t)
+                for i, (_t, _w) in enumerate(zip(t_d, w_d)):
+                    # t_push_back(_t)
+                    t_push_back(i)
                     w_push_back(_w)
+                ofile.additional_branch["delay"][0] = ofile.t[ch][1] - ofile.t[ch][0]
             ofile.Fill()
 
     ofile.Close()

@@ -1,6 +1,6 @@
 {
     "ip_address" : "192.168.1.12",
-    "active_channels" : [1,2,3],
+    "active_channels" : [1,2],
     "trigger_setting" : {
         "channel" : 3,
         "threshold" : 1.5,
@@ -9,13 +9,13 @@
     },
     "delay_scan" : {
         "enable": true,
-        "start" : 5.9,
-        "end" : 7.9,
-        "step_size" : 0.005 
+        "start" : 7.9,
+        "end" : 5.9,
+        "step_size" : -0.005 
     },
-    "nevents" : 32,
+    "nevents" : 1,
     "output" : {
         "directory": "user_data/",
-        "name" : "output.root"
+        "name" : "amp_50mV.root"
     }
 }
