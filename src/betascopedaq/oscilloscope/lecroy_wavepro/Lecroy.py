@@ -298,7 +298,7 @@ class LecroyScope(Scope):
         return [time_list, voltage_list]
 
     # ===========================================================================
-    def _Get_Waveform_Binary(self, channel, raw=False, seq_mode=False):
+    def _Get_Waveform_Binary(self, channel, raw=False, seq_mode=False, ch_prefix="C"):
         """
         Get waveform with binary format. Loop through list of channels.
         """
@@ -311,7 +311,7 @@ class LecroyScope(Scope):
 
         if isinstance(channel, list):
             for ch in channel:
-                self.inst.write(f"C{ch}:WF?")
+                self.inst.write(f"{ch_prefix}{ch}:WF?")
                 binary_stream = self.inst.read_raw()
                 if raw:
                     raw_data.append(binary_stream)
@@ -350,15 +350,19 @@ class LecroyScope(Scope):
             )
 
     # ===========================================================================
-    def get_waveform(self, channel, mode="binary", seq_mode=False):
+    def get_waveform(self, channel, mode="binary", seq_mode=False, ch_prefix="C"):
         if "binary" in mode and "raw" in mode:
             try:
-                return self._Get_Waveform_Binary(channel, raw=True)
+                return self._Get_Waveform_Binary(channel, raw=True, ch_prefix=ch_prefix)
             except ValueError as error:
                 logger.warning(error)
         elif "binary" in mode:
             try:
-                return np.array(self._Get_Waveform_Binary(channel, False, seq_mode))
+                return np.array(
+                    self._Get_Waveform_Binary(
+                        channel, False, seq_mode, ch_prefix=ch_prefix
+                    )
+                )
             except ValueError as error:
                 logger.warning(error)
         elif "ascii" in mode:
