@@ -14,7 +14,7 @@ from array import array
 
 
 class ROOTFileOutput(object):
-    def __init__(self, fileName, branch_list, opt=None, compression_level=5):
+    def __init__(self, fileName, branch_list, opt=None, compression_level="5"):
         # check to see if file exist
         same_file_counter = 1
         self.file_name = fileName
