@@ -3,7 +3,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-from pathlib import Path
 from gpib_ctypes.gpib import _load_lib
 
 _LIBGPIB_SO = "/usr/local/lib/libgpib.so"
@@ -46,7 +45,7 @@ class Agilent81110A(Generator):
         pass
 
     def write(self, *args, **kwarg):
-        return self.inst.write(*args, **kwargs)
+        return self.inst.write(*args, **kwarg)
 
     def query(self, *args, **kwarg):
         return self.inst.query(*args, **kwarg)
