@@ -173,6 +173,7 @@ def daq_high_bandwidth(config):
                         )
                         for ch, (t_d, w_d) in enumerate(zip(*new_data)):
                             data[ch][1] += np.array(w_d) * 0.5
+                evt += naverage
             else:
                 try:
                     scope.wait_trigger()
