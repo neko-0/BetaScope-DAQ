@@ -200,4 +200,7 @@ def daq_high_bandwidth(config):
 if __name__ == "__main__":
     # daq_high_bandwidth("config_high_bandwidth.json")
 
-    daq_gui("config_high_bandwidth.json")
+    try:
+        daq_gui("cache/config_high_bandwidth.json")
+    except FileNotFoundError:
+        daq_gui("config_high_bandwidth.json")
