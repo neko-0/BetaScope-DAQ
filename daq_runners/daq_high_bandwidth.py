@@ -149,14 +149,40 @@ def daq_high_bandwidth(config):
         if wav_gen:
             wav_gen.write(f":PULSe:DELay2 {delay}NS")
         ofile.additional_branch["delay"][0] = delay
-        for evt in tqdm(range(config["output"]["nevents"]), leave=False):
-            try:
-                scope.wait_trigger()
-            except:
-                evt -= 1
-                continue
+        naverage = config["output"]["naverage"] or 1.0
+        tot_evnts = config["output"]["nevents"] * naverage
+        for evt in tqdm(range(tot_evnts), leave=False):
+            if naverage > 1.0:
+                data = None
+                for avg_count in range(naverage):
+                    try:
+                        scope.wait_trigger()
+                    except:
+                        avg_count -= 1
+                        continue
+                    if data is None:
+                        data = scope.get_waveform(
+                            config["scope"]["active_channels"], ch_prefix="Z"
+                        )
+                        # casting the list to numpy array for each channels
+                        for ch in range(len(data[1])):
+                            data[1][ch] = np.array(data[1][ch])
+                    else:
+                        new_data = scope.get_waveform(
+                            config["scope"]["active_channels"], ch_prefix="Z"
+                        )
+                        for ch, (t_d, w_d) in enumerate(zip(*new_data)):
+                            data[ch][1] += np.array(w_d) * 0.5
+            else:
+                try:
+                    scope.wait_trigger()
+                except:
+                    evt -= 1
+                    continue
+                data = scope.get_waveform(
+                    config["scope"]["active_channels"], ch_prefix="Z"
+                )
 
-            data = scope.get_waveform(config["scope"]["active_channels"], ch_prefix="Z")
             for ch, (t_d, w_d) in enumerate(zip(*data)):
                 t_push_back = ofile.t[ch].push_back
                 w_push_back = ofile.w[ch].push_back

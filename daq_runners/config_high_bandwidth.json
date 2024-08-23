@@ -17,6 +17,7 @@
         "step_size" : -0.005 
     },
     "output" : {
+        "naverage" : 256,
         "nevents" : 1,
         "directory": "user_data/",
         "name" : "amp_50mV.root"
