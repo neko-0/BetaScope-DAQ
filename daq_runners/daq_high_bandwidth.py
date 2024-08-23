@@ -149,12 +149,11 @@ def daq_high_bandwidth(config):
         if wav_gen:
             wav_gen.write(f":PULSe:DELay2 {delay}NS")
         ofile.additional_branch["delay"][0] = delay
-        naverage = config["output"]["naverage"] or 1.0
-        tot_evnts = config["output"]["nevents"] * naverage
-        for evt in tqdm(range(tot_evnts), leave=False):
-            if naverage > 1.0:
+        naverage = config["output"]["naverage"]
+        for evt in tqdm(range(config["output"]["nevents"]), leave=False):
+            if naverage > 0.0:
                 data = None
-                for avg_count in range(naverage):
+                for avg_count in tqdm(range(naverage), leave=False):
                     try:
                         scope.wait_trigger()
                     except:
@@ -173,7 +172,6 @@ def daq_high_bandwidth(config):
                         )
                         for ch, (t_d, w_d) in enumerate(zip(*new_data)):
                             data[ch][1] += np.array(w_d) * 0.5
-                evt += naverage
             else:
                 try:
                     scope.wait_trigger()
