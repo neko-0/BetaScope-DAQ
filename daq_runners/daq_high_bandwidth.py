@@ -141,7 +141,7 @@ def daq_high_bandwidth(config):
 
     output_name = f"{config['output']['directory']}/{config['output']['name']}"
 
-    ofile = ROOTFileOutput(output_name, config["active_channels"])
+    ofile = ROOTFileOutput(output_name, config["scope"]["active_channels"])
     ofile.create_branch("delay", "D")
     ofile.create_branch("t_interval", "D")
 
