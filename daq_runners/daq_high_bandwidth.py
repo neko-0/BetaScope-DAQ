@@ -170,8 +170,9 @@ def daq_high_bandwidth(config):
                         new_data = scope.get_waveform(
                             config["scope"]["active_channels"], ch_prefix="Z"
                         )
-                        for ch, (t_d, w_d) in enumerate(zip(*new_data)):
-                            data[ch][1] += np.array(w_d) * 0.5
+                        for ch in range(len(data[1])):
+                            data[1][ch] += np.array(new_data[1][ch])
+                            data[1][ch] *= 0.5
             else:
                 try:
                     scope.wait_trigger()
